@@ -1,0 +1,16 @@
+*.safetensors
+*.bin
+*.pt
+*.pth
+*.pkl
+*.ckpt
+__pycache__/
+*.pyc
+.DS_Store
+data_cache_dir/
+model_cache_dir/
+nature_exact_experiment/
+true_recursive_experiment/
+lightning_logs/
+*.zip
+*.tar.gz
