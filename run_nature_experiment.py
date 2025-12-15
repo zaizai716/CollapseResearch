@@ -10,6 +10,9 @@ import subprocess
 import json
 from pathlib import Path
 
+# Disable HF_TRANSFER to avoid download issues
+os.environ['HF_HUB_ENABLE_HF_TRANSFER'] = '0'
+
 # Add the Nature paper code directory to path
 sys.path.append('Zakahler-curse_recurse-b48c90a')
 
@@ -57,12 +60,8 @@ def run_generation_experiment(num_generations=5):
         if gen == 0:
             # Generation 0: Train on original WikiText2
             print("📚 Training on original WikiText2 dataset...")
-            cmd.extend([
-                "--eval_only" if gen > 0 else "--placeholder",  # Train normally
-            ])
-            # Remove placeholder
-            if "--placeholder" in cmd:
-                cmd.remove("--placeholder")
+            # Add --pretrained flag for generation 0 to load from HuggingFace
+            cmd.append("--pretrained")
         else:
             # Later generations: Load previous model and generated data
             prev_gen_dir = base_dir / f"gen_{gen-1}"
