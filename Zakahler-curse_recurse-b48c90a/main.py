@@ -127,7 +127,7 @@ def main():
         },
         ('-a', '--accelerator'): {
             'type': str,
-            'default': None,
+            'default': 'auto',
             'help': 'Accelerator style.',
         },
         ('-s', '--strategy'): {
