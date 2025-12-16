@@ -183,7 +183,7 @@ def run_generation_experiment(num_generations=5, collect_extra_metrics=True):
             "--learning-rate", "2e-5",            # Their LR
             "--max-epochs", "5",                  # Their epochs
             "--save-name", str(gen_dir) + "/",
-            "--accelerator", "auto",              # Auto-detect GPU/CPU
+            "--accelerator", "cuda",              # Force GPU usage
             "--num_devices", "1",                 # Single GPU
         ]
         
