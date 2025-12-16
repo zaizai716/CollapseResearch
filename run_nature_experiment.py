@@ -55,6 +55,8 @@ def run_generation_experiment(num_generations=5):
             "--learning-rate", "2e-5",            # Their LR
             "--max-epochs", "5",                  # Their epochs
             "--save-name", str(gen_dir) + "/",
+            "--accelerator", "cuda",              # Use GPU if available
+            "--num_devices", "1",                 # Single GPU
         ]
         
         if gen == 0:
