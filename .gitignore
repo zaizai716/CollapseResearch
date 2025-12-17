@@ -14,3 +14,4 @@ true_recursive_experiment/
 lightning_logs/
 *.zip
 *.tar.gz
+CLAUDE.md
