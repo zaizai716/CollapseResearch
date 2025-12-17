@@ -67,6 +67,120 @@ def calculate_diversity_metrics(text_samples):
     
     return metrics
 
+def calculate_nature_paper_metrics(model_path, tokenizer_name="facebook/opt-125m"):
+    """
+    Calculate Nature paper-specific metrics:
+    1. Distribution analysis - probability mass in tails
+    2. Token diversity analysis
+    """
+    from transformers import AutoTokenizer, AutoModelForCausalLM
+    
+    metrics = {}
+    
+    try:
+        # Load model and tokenizer
+        tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
+        if tokenizer.pad_token is None:
+            tokenizer.pad_token = tokenizer.eos_token
+        
+        # Load model from checkpoint
+        if model_path.exists():
+            checkpoint = torch.load(model_path, map_location='cpu')
+            state_dict = checkpoint['state_dict']
+            
+            # Remove 'model.' prefix from keys
+            new_state_dict = {}
+            for k, v in state_dict.items():
+                if k.startswith('model.'):
+                    new_state_dict[k[6:]] = v
+                else:
+                    new_state_dict[k] = v
+            
+            model = AutoModelForCausalLM.from_pretrained(tokenizer_name)
+            model.load_state_dict(new_state_dict, strict=False)
+        else:
+            return metrics
+        
+        model.eval()
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        model = model.to(device)
+        
+        # 1. DISTRIBUTION ANALYSIS - Probability mass in tails
+        # Generate many samples and analyze token probability distributions
+        test_prompts = ["The", "In", "A", "This", "Today"]
+        all_token_probs = []
+        
+        with torch.no_grad():
+            for prompt in test_prompts:
+                inputs = tokenizer(prompt, return_tensors="pt").to(device)
+                outputs = model(**inputs)
+                logits = outputs.logits[0, -1, :]  # Last token's logits
+                probs = torch.softmax(logits, dim=-1).cpu().numpy()
+                all_token_probs.append(probs)
+        
+        # Analyze probability mass distribution
+        avg_probs = np.mean(all_token_probs, axis=0)
+        sorted_probs = np.sort(avg_probs)[::-1]  # Sort descending
+        
+        # Calculate probability mass in top tokens vs tail
+        top_10_mass = np.sum(sorted_probs[:10])
+        top_100_mass = np.sum(sorted_probs[:100])
+        top_1000_mass = np.sum(sorted_probs[:1000])
+        tail_mass = 1.0 - top_1000_mass  # Mass in tokens beyond top 1000
+        
+        metrics['prob_mass_top_10'] = float(top_10_mass)
+        metrics['prob_mass_top_100'] = float(top_100_mass)
+        metrics['prob_mass_top_1000'] = float(top_1000_mass)
+        metrics['prob_mass_tail'] = float(tail_mass)
+        
+        # Calculate effective vocab size (tokens with non-negligible probability)
+        threshold = 1e-6
+        effective_vocab = np.sum(avg_probs > threshold)
+        metrics['effective_vocab_size'] = int(effective_vocab)
+        
+        # 2. TOKEN DIVERSITY ANALYSIS
+        # Generate longer sequences and analyze token usage patterns
+        num_sequences = 20
+        generated_tokens = []
+        
+        for _ in range(num_sequences):
+            prompt = np.random.choice(test_prompts)
+            inputs = tokenizer(prompt, return_tensors="pt").to(device)
+            
+            with torch.no_grad():
+                outputs = model.generate(
+                    inputs['input_ids'],
+                    max_new_tokens=100,
+                    do_sample=True,
+                    temperature=1.0,
+                    pad_token_id=tokenizer.pad_token_id
+                )
+            
+            # Extract generated tokens (excluding prompt)
+            generated = outputs[0][len(inputs['input_ids'][0]):]
+            generated_tokens.extend(generated.cpu().tolist())
+        
+        # Calculate token-level diversity
+        unique_tokens = len(set(generated_tokens))
+        total_tokens = len(generated_tokens)
+        token_diversity = unique_tokens / total_tokens if total_tokens > 0 else 0
+        
+        metrics['token_diversity'] = float(token_diversity)
+        metrics['unique_tokens_generated'] = unique_tokens
+        metrics['total_tokens_generated'] = total_tokens
+        
+        # Calculate token frequency distribution (to detect collapse to common tokens)
+        token_counts = Counter(generated_tokens)
+        top_10_tokens_freq = sum(count for _, count in token_counts.most_common(10))
+        top_10_tokens_ratio = top_10_tokens_freq / total_tokens if total_tokens > 0 else 0
+        
+        metrics['top_10_tokens_frequency_ratio'] = float(top_10_tokens_ratio)
+        
+    except Exception as e:
+        print(f"  Warning: Could not calculate Nature paper metrics: {e}")
+    
+    return metrics
+
 def generate_samples(model_path, num_samples=20):
     """Generate text samples from a trained model."""
     try:
@@ -144,7 +258,9 @@ def run_generation_experiment(num_generations=5, collect_extra_metrics=True):
     ║ NATURE PAPER METRICS:                                 ║
     ║ - Perplexity (primary metric)                         ║
     ║ - Training/Validation Loss                            ║
-    ║ - Sample Generated Texts                              ║""")
+    ║ - Sample Generated Texts                              ║
+    ║ - Distribution Analysis (prob mass in tails)          ║
+    ║ - Token Diversity Analysis                            ║""")
     
     if collect_extra_metrics:
         print("""    ╠══════════════════════════════════════════════════════╣
@@ -271,8 +387,13 @@ def run_generation_experiment(num_generations=5, collect_extra_metrics=True):
         
         # Generate samples and calculate additional metrics if requested
         if collect_extra_metrics:
-            print(f"📊 Calculating additional metrics for Generation {gen}...")
+            print(f"📊 Calculating metrics for Generation {gen}...")
             model_path = gen_dir / "best.ckpt"
+            
+            # Calculate Nature paper metrics (distribution analysis & token diversity)
+            print(f"  Calculating Nature paper metrics...")
+            nature_extra_metrics = calculate_nature_paper_metrics(model_path)
+            metrics["nature_distribution_metrics"] = nature_extra_metrics
             
             if model_path.exists():
                 samples = generate_samples(model_path, num_samples=20)
@@ -307,8 +428,20 @@ def run_generation_experiment(num_generations=5, collect_extra_metrics=True):
         if val_loss:
             print(f"   Val Loss: {val_loss:.3f}")
         
+        # Print Nature paper distribution metrics
+        if "nature_distribution_metrics" in metrics:
+            nm = metrics["nature_distribution_metrics"]
+            if nm:
+                print(f"   Distribution Analysis:")
+                print(f"    - Prob mass in top 10 tokens: {nm.get('prob_mass_top_10', 0):.3f}")
+                print(f"    - Prob mass in top 100 tokens: {nm.get('prob_mass_top_100', 0):.3f}")
+                print(f"    - Prob mass in tail (>1000): {nm.get('prob_mass_tail', 0):.3f}")
+                print(f"   Token Diversity:")
+                print(f"    - Token diversity: {nm.get('token_diversity', 0):.3f}")
+                print(f"    - Effective vocab size: {nm.get('effective_vocab_size', 0)}")
+        
         if collect_extra_metrics and "additional_metrics" in metrics:
-            print(f"  ADDITIONAL METRICS:")
+            print(f"  ADDITIONAL METRICS (our analysis):")
             dm = metrics["additional_metrics"]
             print(f"   Vocabulary Diversity: {dm['vocab_diversity']:.3f}")
             print(f"   2-gram Diversity: {dm['2gram_diversity']:.3f}")
