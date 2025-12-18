@@ -287,6 +287,33 @@ def run_generation_experiment(num_generations=5, collect_extra_metrics=True):
         gen_dir = base_dir / f"gen_{gen}"
         gen_dir.mkdir(exist_ok=True)
         
+        # Check if this generation is already trained
+        checkpoint_path = gen_dir / "best.ckpt"
+        if checkpoint_path.exists():
+            print(f"✅ Generation {gen} already trained (found {checkpoint_path})")
+            print(f"   Skipping training, will calculate metrics...")
+            
+            # Still calculate metrics for this generation
+            metrics = {
+                "generation": gen,
+                "status": "already_completed",
+                "model_path": str(checkpoint_path)
+            }
+            
+            # Calculate metrics if model exists
+            if collect_extra_metrics:
+                print(f"📊 Calculating metrics for existing Generation {gen}...")
+                nature_extra_metrics = calculate_nature_paper_metrics(checkpoint_path)
+                metrics["nature_distribution_metrics"] = nature_extra_metrics
+                
+                samples = generate_samples(checkpoint_path, num_samples=20)
+                diversity_metrics = calculate_diversity_metrics(samples)
+                metrics["additional_metrics"] = diversity_metrics
+                metrics["num_samples"] = len(samples)
+            
+            metrics_history.append(metrics)
+            continue  # Skip to next generation
+        
         # Set environment variable to disable HF_TRANSFER for this subprocess
         env = os.environ.copy()
         env['HF_HUB_ENABLE_HF_TRANSFER'] = '0'
@@ -299,7 +326,7 @@ def run_generation_experiment(num_generations=5, collect_extra_metrics=True):
             "--learning-rate", "2e-5",            # Their LR
             "--max-epochs", "5",                  # Their epochs
             "--save-name", str(gen_dir) + "/",
-            "--accelerator", "cuda",              # Force GPU usage
+            "--accelerator", "gpu",               # Force GPU usage
             "--num_devices", "1",                 # Single GPU
         ]
         
