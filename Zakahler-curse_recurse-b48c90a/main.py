@@ -251,10 +251,14 @@ def main():
     #testm = MetricTracker()#MetricTracker(MetricCollection([CatMetric()]))
 
 
+    # FORCE GPU AND DEBUG PRINT
+    final_accelerator = a.accelerator if a.accelerator != 'auto' else ('gpu' if torch.cuda.is_available() else 'cpu')
+    print(f"🚀 ACCELERATOR DEBUG: a.accelerator={a.accelerator}, CUDA available={torch.cuda.is_available()}, USING={final_accelerator}")
+    
     trainer=pl.Trainer(
         max_epochs=a.max_epochs,
         devices=1,
-        accelerator=a.accelerator if a.accelerator != 'auto' else ('gpu' if torch.cuda.is_available() else 'cpu'),
+        accelerator=final_accelerator,
         strategy='auto',
         fast_dev_run=a.debug,
         callbacks=[checkpoint_callback],#, testm],
