@@ -254,7 +254,7 @@ def main():
     trainer=pl.Trainer(
         max_epochs=a.max_epochs,
         devices=1,
-        accelerator='gpu' if torch.cuda.is_available() else 'cpu',
+        accelerator=a.accelerator if a.accelerator != 'auto' else ('gpu' if torch.cuda.is_available() else 'cpu'),
         strategy='auto',
         fast_dev_run=a.debug,
         callbacks=[checkpoint_callback],#, testm],
