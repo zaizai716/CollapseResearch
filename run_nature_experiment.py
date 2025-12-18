@@ -245,33 +245,26 @@ def run_generation_experiment(num_generations=5, collect_extra_metrics=True):
     Run the recursive training experiment with Nature paper settings.
     """
     
-    print("""
-    ╔══════════════════════════════════════════════════════╗
-    ║     NATURE PAPER EXACT REPLICATION EXPERIMENT         ║
-    ╠══════════════════════════════════════════════════════╣
-    ║ Model: OPT-125M (facebook/opt-125m)                   ║
-    ║ Dataset: WikiText2 (64-token chunks)                  ║
-    ║ Generation: 5-way beam search, repetition penalty 3.0 ║
-    ║ Training: 5 epochs, batch size 128, LR 2e-5           ║
-    ║ Generations: 5 recursive training cycles              ║
-    ╠══════════════════════════════════════════════════════╣
-    ║ NATURE PAPER METRICS:                                 ║
-    ║ - Perplexity (primary metric)                         ║
-    ║ - Training/Validation Loss                            ║
-    ║ - Sample Generated Texts                              ║
-    ║ - Distribution Analysis (prob mass in tails)          ║
-    ║ - Token Diversity Analysis                            ║""")
+    print("\n=== Nature Collapse Experiment ===")
+    print("Model: OPT-125M")
+    print("Dataset: WikiText2")
+    print("Generations: 5 recursive cycles")
+    print("Batch size: 128, LR: 2e-5, Epochs: 5")
+    print("\nMetrics tracked:")
+    print("- Perplexity (main)")
+    print("- Train/val loss")
+    print("- Generated samples")
+    print("- Distribution analysis")
+    print("- Token diversity")
     
     if collect_extra_metrics:
-        print("""    ╠══════════════════════════════════════════════════════╣
-    ║ ADDITIONAL METRICS (our analysis):                    ║
-    ║ - Vocabulary Diversity                                 ║
-    ║ - N-gram Diversity (1,2,3,4-grams)                   ║
-    ║ - Word Entropy                                        ║
-    ║ - Repetition Rate                                     ║""")
+        print("\nAdditional metrics:")
+        print("- Vocab diversity")
+        print("- N-gram diversity")
+        print("- Word entropy")
+        print("- Repetition rate")
     
-    print("""    ╚══════════════════════════════════════════════════════╝
-    """)
+    print("\n" + "="*40 + "\n")
     
     base_dir = Path("nature_exact_experiment")
     base_dir.mkdir(exist_ok=True)
@@ -280,9 +273,7 @@ def run_generation_experiment(num_generations=5, collect_extra_metrics=True):
     metrics_history = []
     
     for gen in range(num_generations):
-        print(f"\n{'='*60}")
-        print(f"GENERATION {gen}")
-        print(f"{'='*60}\n")
+        print(f"\n--- Generation {gen} ---")
         
         gen_dir = base_dir / f"gen_{gen}"
         gen_dir.mkdir(exist_ok=True)
@@ -290,8 +281,7 @@ def run_generation_experiment(num_generations=5, collect_extra_metrics=True):
         # Check if this generation is already trained
         checkpoint_path = gen_dir / "best.ckpt"
         if checkpoint_path.exists():
-            print(f"✅ Generation {gen} already trained (found {checkpoint_path})")
-            print(f"   Skipping training, will calculate metrics...")
+            print(f"Gen {gen} already done, skipping")
             
             # Still calculate metrics for this generation
             metrics = {
@@ -300,9 +290,9 @@ def run_generation_experiment(num_generations=5, collect_extra_metrics=True):
                 "model_path": str(checkpoint_path)
             }
             
-            # Calculate metrics if model exists
+            # calc metrics if model exists
             if collect_extra_metrics:
-                print(f"📊 Calculating metrics for existing Generation {gen}...")
+                print(f"calculating metrics for gen {gen}...")
                 nature_extra_metrics = calculate_nature_paper_metrics(checkpoint_path)
                 metrics["nature_distribution_metrics"] = nature_extra_metrics
                 
@@ -331,45 +321,45 @@ def run_generation_experiment(num_generations=5, collect_extra_metrics=True):
         ]
         
         if gen == 0:
-            # Generation 0: Train on original WikiText2
-            print("📚 Training on original WikiText2 dataset...")
-            # Add --pretrained flag for generation 0 to load from HuggingFace
+            # gen 0: train on original wikitext2
+            print("training on original wikitext2...")
+            # add pretrained flag for gen 0 to load from HF
             cmd.append("--pretrained")
         else:
-            # Later generations: Load previous model and generated data
+            # later gens: load prev model and generated data
             prev_gen_dir = base_dir / f"gen_{gen-1}"
             
-            # First, generate synthetic data from previous model
-            print(f"🔄 Generating synthetic data from Generation {gen-1}...")
+            # first generate synthetic data from prev model
+            print(f"generating synthetic data from gen {gen-1}...")
             
             gen_cmd = [
                 "python3", "Zakahler-curse_recurse-b48c90a/main.py",
                 "--model_tag", "facebook/opt-125m",
                 "--load-name", str(prev_gen_dir / "best.ckpt"),
                 "--generate", str(gen_dir / f"generated_data_gen{gen}"),
-                # Use their exact generation settings from main.py line 307
+                # exact generation settings from main.py line 307
                 # num_beams=5, max_new_tokens=64, min_new_tokens=64, repetition_penalty=3.0
             ]
             
-            print(f"  Command: {' '.join(gen_cmd[:5])}...")
+            print(f"  cmd: {' '.join(gen_cmd[:5])}...")
             result = subprocess.run(gen_cmd, capture_output=True, text=True, env=env)
             
             if result.returncode != 0:
-                print(f"❌ Generation failed: {result.stderr}")
+                print(f"generation failed: {result.stderr}")
                 continue
             
-            # Now train on the generated data
-            print(f"📚 Training Generation {gen} on synthetic data...")
+            # now train on the generated data
+            print(f"training gen {gen} on synthetic data...")
             cmd.extend([
                 "--load-generate", str(gen_dir / f"generated_data_gen{gen}.pkl"),
             ])
         
-        # Run training with HF_TRANSFER disabled
-        print(f"  Command: {' '.join(cmd[:5])}...")
+        # run training with HF_TRANSFER disabled
+        print(f"  running: {' '.join(cmd[:5])}...")
         result = subprocess.run(cmd, capture_output=True, text=True, env=env)
         
         if result.returncode != 0:
-            print(f"❌ Training failed: {result.stderr}")
+            print(f"training failed: {result.stderr}")
             continue
         
         # Parse Nature paper metrics from output
@@ -412,13 +402,13 @@ def run_generation_experiment(num_generations=5, collect_extra_metrics=True):
             "model_path": str(gen_dir / "best.ckpt")
         }
         
-        # Generate samples and calculate additional metrics if requested
+        # generate samples and calc additional metrics if requested
         if collect_extra_metrics:
-            print(f"📊 Calculating metrics for Generation {gen}...")
+            print(f"calculating metrics for gen {gen}...")
             model_path = gen_dir / "best.ckpt"
             
-            # Calculate Nature paper metrics (distribution analysis & token diversity)
-            print(f"  Calculating Nature paper metrics...")
+            # calc nature paper metrics (distribution analysis & token diversity)
+            print(f"  calculating nature paper metrics...")
             nature_extra_metrics = calculate_nature_paper_metrics(model_path)
             metrics["nature_distribution_metrics"] = nature_extra_metrics
             
@@ -446,10 +436,10 @@ def run_generation_experiment(num_generations=5, collect_extra_metrics=True):
         
         metrics_history.append(metrics)
         
-        # Print current generation metrics
-        print(f"\n📊 Generation {gen} Results:")
-        print(f"  NATURE PAPER METRICS:")
-        print(f"   Perplexity: {perplexity:.2f}" if perplexity else "   Perplexity: N/A")
+        # print current generation metrics
+        print(f"\ngen {gen} results:")
+        print(f"  nature paper metrics:")
+        print(f"   perplexity: {perplexity:.2f}" if perplexity else "   perplexity: n/a")
         if train_loss:
             print(f"   Train Loss: {train_loss:.3f}")
         if val_loss:
@@ -479,18 +469,13 @@ def run_generation_experiment(num_generations=5, collect_extra_metrics=True):
         with open(base_dir / "metrics_history.json", "w") as f:
             json.dump(metrics_history, f, indent=2)
     
-    print(f"""
-    ╔══════════════════════════════════════════════════════╗
-    ║            NATURE REPLICATION COMPLETE!               ║
-    ╠══════════════════════════════════════════════════════╣
-    ║ Results saved to: nature_exact_experiment/            ║
-    ║ Metrics: nature_exact_experiment/metrics_history.json ║
-    ╚══════════════════════════════════════════════════════╝
-    """)
+    print("\n--- experiment complete ---")
+    print(f"results saved to: nature_exact_experiment/")
+    print(f"metrics: nature_exact_experiment/metrics_history.json")
     
-    # Print summary
+    # print summary
     if len(metrics_history) > 1:
-        print("\n📈 Model Collapse Progression:")
+        print("\nmodel collapse progression:")
         
         # Nature paper metrics
         print("\n  NATURE PAPER METRICS:")
