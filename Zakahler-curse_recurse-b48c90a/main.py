@@ -292,8 +292,9 @@ def main():
             model = plt_model.model.eval()
             batches = []
             for batch in tqdm(data_loader.train_dataloader):
-                # Move to appropriate device
-                device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+                # Move to appropriate device - USE CUDA IF AVAILABLE
+                device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+                print(f"🔥 GENERATION using device: {device}")
                 input_ids = batch["input_ids"].to(device)
                 attention_mask = batch["attention_mask"].to(device)
                 labels = batch["labels"].to(device)
