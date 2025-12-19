@@ -43,26 +43,13 @@ def calculate_diversity_metrics(text_samples):
             total_ngrams = len(ngrams)
             metrics[f'{n}gram_diversity'] = unique_ngrams / total_ngrams if total_ngrams > 0 else 0
         
-        # 3. Word entropy
-        word_counts = Counter(words)
-        total = sum(word_counts.values())
-        probs = [count/total for count in word_counts.values()]
-        entropy = -sum(p * np.log2(p) for p in probs if p > 0)
-        metrics['word_entropy'] = entropy
-        
-        # 4. Repetition rate (duplicate lines)
-        lines = [s.strip() for s in all_text.split('.') if s.strip()]
-        repetition_rate = 1 - (len(set(lines)) / len(lines)) if lines else 0
-        metrics['repetition_rate'] = repetition_rate
     else:
         metrics = {
             'vocab_diversity': 0,
             '1gram_diversity': 0,
             '2gram_diversity': 0,
             '3gram_diversity': 0,
-            '4gram_diversity': 0,
-            'word_entropy': 0,
-            'repetition_rate': 0
+            '4gram_diversity': 0
         }
     
     return metrics
@@ -105,7 +92,7 @@ def calculate_nature_paper_metrics(model_path, tokenizer_name="facebook/opt-125m
         device = "cuda" if torch.cuda.is_available() else "cpu"
         model = model.to(device)
         
-        # 1. DISTRIBUTION ANALYSIS - Probability mass in tails
+        # 1. Distribution analysis - Probability mass in tails
         # Generate many samples and analyze token probability distributions
         test_prompts = ["The", "In", "A", "This", "Today"]
         all_token_probs = []
@@ -138,7 +125,7 @@ def calculate_nature_paper_metrics(model_path, tokenizer_name="facebook/opt-125m
         effective_vocab = np.sum(avg_probs > threshold)
         metrics['effective_vocab_size'] = int(effective_vocab)
         
-        # 2. TOKEN DIVERSITY ANALYSIS
+        # 2. Token diversity
         # Generate longer sequences and analyze token usage patterns
         num_sequences = 20
         generated_tokens = []
@@ -169,12 +156,6 @@ def calculate_nature_paper_metrics(model_path, tokenizer_name="facebook/opt-125m
         metrics['unique_tokens_generated'] = unique_tokens
         metrics['total_tokens_generated'] = total_tokens
         
-        # Calculate token frequency distribution (to detect collapse to common tokens)
-        token_counts = Counter(generated_tokens)
-        top_10_tokens_freq = sum(count for _, count in token_counts.most_common(10))
-        top_10_tokens_ratio = top_10_tokens_freq / total_tokens if total_tokens > 0 else 0
-        
-        metrics['top_10_tokens_frequency_ratio'] = float(top_10_tokens_ratio)
         
     except Exception as e:
         print(f"  Warning: Could not calculate Nature paper metrics: {e}")
@@ -261,8 +242,6 @@ def run_generation_experiment(num_generations=5, collect_extra_metrics=True):
         print("\nAdditional metrics:")
         print("- Vocab diversity")
         print("- N-gram diversity")
-        print("- Word entropy")
-        print("- Repetition rate")
     
     print("\n" + "="*40 + "\n")
     
@@ -425,9 +404,7 @@ def run_generation_experiment(num_generations=5, collect_extra_metrics=True):
                     '1gram_diversity': 0,
                     '2gram_diversity': 0,
                     '3gram_diversity': 0,
-                    '4gram_diversity': 0,
-                    'word_entropy': 0,
-                    'repetition_rate': 0
+                    '4gram_diversity': 0
                 }
                 samples = []
             
@@ -462,8 +439,6 @@ def run_generation_experiment(num_generations=5, collect_extra_metrics=True):
             dm = metrics["additional_metrics"]
             print(f"   Vocabulary Diversity: {dm['vocab_diversity']:.3f}")
             print(f"   2-gram Diversity: {dm['2gram_diversity']:.3f}")
-            print(f"   Word Entropy: {dm['word_entropy']:.3f}")
-            print(f"   Repetition Rate: {dm['repetition_rate']:.3f}")
         
         # Save intermediate results
         with open(base_dir / "metrics_history.json", "w") as f:
@@ -517,12 +492,12 @@ if __name__ == "__main__":
     
     # Check if the Nature codebase is present
     if not Path("Zakahler-curse_recurse-b48c90a/main.py").exists():
-        print("❌ Nature paper codebase not found!")
+        print("Nature paper codebase not found!")
         print("   Please ensure Zakahler-curse_recurse-b48c90a/ directory exists")
         sys.exit(1)
     
     # Install required packages if needed, including hf_transfer to fix the error
-    print("📦 Installing required packages...")
+    print("Installing required packages...")
     subprocess.run([
         "pip3", "install", "-q",
         "torch", "transformers", "datasets", 
@@ -530,7 +505,7 @@ if __name__ == "__main__":
         "tensorboard", "tensorboardX", "hf_transfer"
     ])
     
-    print("\n✅ Dependencies ready!")
+    print("\nDependencies ready")
     
     # Run the experiment with full metrics
     run_generation_experiment(num_generations=5, collect_extra_metrics=True)
