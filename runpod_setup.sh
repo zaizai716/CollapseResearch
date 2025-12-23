@@ -34,11 +34,24 @@ pip install --upgrade pip
 # Install PyTorch with CUDA support
 # CRITICAL: Must use PyTorch 2.6+ due to CVE-2025-32434 vulnerability
 echo "Checking PyTorch version..."
-python3 -c "import torch; print(f'Current PyTorch: {torch.__version__}')" 2>/dev/null || echo "PyTorch not installed"
+current_version=$(python3 -c "import torch; print(torch.__version__)" 2>/dev/null || echo "0.0.0")
+echo "Current PyTorch: $current_version"
 
-# Install or upgrade to PyTorch 2.6+ (required for transformers security fix)
-echo "Installing/Upgrading to PyTorch 2.6+ (required for security fix)..."
-pip install torch>=2.6.0 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+# Check if we need to upgrade
+if [[ "$current_version" < "2.6.0" ]]; then
+    echo "⚠️ PyTorch $current_version is too old! Upgrading to 2.6.0..."
+    
+    # Remove old version completely
+    pip uninstall torch torchvision torchaudio -y
+    
+    # Install PyTorch 2.6.0 specifically
+    pip install torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu124
+else
+    echo "✓ PyTorch $current_version is already 2.6+, no upgrade needed"
+fi
+
+# Install safetensors for alternative loading method
+pip install safetensors
 
 # Verify installation
 python3 -c "

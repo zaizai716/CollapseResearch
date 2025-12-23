@@ -184,7 +184,19 @@ def main():
     # model_tag = "lnair/opt-1.3b-wikitext2"
     # model_tag = "gpt2"
     if a.pretrained:
-        model = AutoModelForCausalLM.from_pretrained(model_tag, cache_dir='./data_cache_dir',)
+        # Try to use safetensors format to avoid PyTorch vulnerability
+        try:
+            model = AutoModelForCausalLM.from_pretrained(
+                model_tag, 
+                cache_dir='./data_cache_dir',
+                use_safetensors=True
+            )
+            print("✓ Loaded model using safetensors format")
+        except:
+            # Fallback to regular loading if safetensors not available
+            print("⚠️ Safetensors not available, using regular PyTorch format")
+            print("  This requires PyTorch 2.6+ due to security vulnerability")
+            model = AutoModelForCausalLM.from_pretrained(model_tag, cache_dir='./data_cache_dir',)
     else:
         config = AutoConfig.from_pretrained(model_tag)
         model = AutoModelForCausalLM.from_config(config=config)
