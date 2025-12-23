@@ -116,7 +116,7 @@ def main():
         # cpu gpu setup for lightning
         ('-w', '--num_workers'): {
             'type': int,
-            'default': 1,
+            'default': 0,  # Set to 0 to avoid CUDA multiprocessing issues
             'help': 'Number of CPU workers.',
         },
         ('-n', '--num_devices'): {
@@ -276,8 +276,8 @@ def main():
         accelerator = 'gpu'
         devices = 1
         
-        # Set default tensor type to CUDA for better GPU utilization
-        torch.set_default_tensor_type('torch.cuda.FloatTensor')
+        # Note: Don't set default tensor type to CUDA as it causes multiprocessing issues
+        # torch.set_default_tensor_type('torch.cuda.FloatTensor')  # REMOVED - causes issues
     else:
         print("⚠️ WARNING: CUDA not available, falling back to CPU")
         accelerator = 'cpu'

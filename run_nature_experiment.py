@@ -284,7 +284,8 @@ def run_generation_experiment(num_generations=5, collect_extra_metrics=True):
             "--batch-size", "128",           
             "--learning-rate", "2e-5",           
             "--max-epochs", "5",                 
-            "--save-name", str(gen_dir) + "/",                
+            "--save-name", str(gen_dir) + "/",
+            "--num_workers", "0",  # Set to 0 to avoid CUDA multiprocessing issues               
         ]
         
         if gen == 0:
