@@ -1,11 +1,4 @@
 #!/usr/bin/env python3
-"""
-Replication of GMM (Gaussian Mixture Model) experiments from 
-"The Curse of Recursion: Training on Generated Data Makes Models Forget"
-
-This demonstrates model collapse in the simplest case - fitting GMMs recursively.
-"""
-
 import numpy as np
 import matplotlib
 matplotlib.use('Agg')  # Use non-interactive backend
@@ -16,7 +9,7 @@ import json
 import warnings
 warnings.filterwarnings('ignore')
 
-# Set random seed for reproducibility
+# Set seed for reproducibility
 np.random.seed(42)
 
 def calculate_l2_distance_gmms(gmm1, gmm2):
@@ -53,17 +46,6 @@ def calculate_l2_distance_gmms(gmm1, gmm2):
         return np.nan
 
 def run_gmm_collapse_experiment(n_samples=1000, n_components=2, n_generations=100):
-    """
-    Run the GMM model collapse experiment.
-    
-    Args:
-        n_samples: Number of samples to generate at each generation
-        n_components: Number of components in the GMM
-        n_generations: Number of recursive generations
-    
-    Returns:
-        Dictionary with results including L2 distances, means, and variances
-    """
     
     print(f"Running GMM collapse experiment:")
     print(f"  Samples per generation: {n_samples}")
@@ -148,7 +130,6 @@ def run_gmm_collapse_experiment(n_samples=1000, n_components=2, n_generations=10
     }
 
 def plot_results(results):
-    """Plot the results showing model collapse."""
     
     fig, axes = plt.subplots(2, 3, figsize=(15, 8))
     
@@ -224,11 +205,9 @@ def plot_results(results):
     print("\nResults saved to 'gmm_model_collapse_results.png'")
 
 def main():
-    """Main function to run the experiment."""
     
     print("=" * 60)
     print("Replicating Model Collapse with Gaussian Mixture Models")
-    print("From: 'The Curse of Recursion' Paper")
     print("=" * 60)
     
     # Run experiment with different sample sizes to show effect

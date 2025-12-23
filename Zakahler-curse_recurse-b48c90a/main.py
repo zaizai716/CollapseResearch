@@ -115,7 +115,6 @@ def main():
 
         # cpu gpu setup for lightning
         ('-w', '--num_workers'): {
-            # multiprocessing fail with too many works
             'type': int,
             'default': 1,
             'help': 'Number of CPU workers.',
@@ -182,7 +181,7 @@ def main():
     np.random.seed(a.seed)
 
     model_tag = a.model_tag
-    #model_tag = "lnair/opt-1.3b-wikitext2"
+    # model_tag = "lnair/opt-1.3b-wikitext2"
     # model_tag = "gpt2"
     if a.pretrained:
         model = AutoModelForCausalLM.from_pretrained(model_tag, cache_dir='./data_cache_dir',)
@@ -251,14 +250,22 @@ def main():
     #testm = MetricTracker()#MetricTracker(MetricCollection([CatMetric()]))
 
 
-    # FORCE GPU AND DEBUG PRINT
-    final_accelerator = a.accelerator if a.accelerator != 'auto' else ('gpu' if torch.cuda.is_available() else 'cpu')
-    print(f"🚀 ACCELERATOR DEBUG: a.accelerator={a.accelerator}, CUDA available={torch.cuda.is_available()}, USING={final_accelerator}")
+    # Force GPU usage for RunPod
+    if torch.cuda.is_available():
+        print(f"✓ CUDA is available! Using GPU: {torch.cuda.get_device_name(0)}")
+        print(f"  CUDA version: {torch.version.cuda}")
+        print(f"  PyTorch version: {torch.__version__}")
+        accelerator = 'gpu'
+        devices = 1
+    else:
+        print("⚠️ WARNING: CUDA not available, falling back to CPU")
+        accelerator = 'cpu'
+        devices = 1
     
     trainer=pl.Trainer(
         max_epochs=a.max_epochs,
-        devices=1,
-        accelerator=final_accelerator,
+        devices=devices,
+        accelerator=accelerator,
         strategy='auto',
         fast_dev_run=a.debug,
         callbacks=[checkpoint_callback],#, testm],
@@ -292,9 +299,9 @@ def main():
             model = plt_model.model.eval()
             batches = []
             for batch in tqdm(data_loader.train_dataloader):
-                # Move to appropriate device - USE CUDA IF AVAILABLE
+                # Move to appropriate device - use cuda if available
                 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-                print(f"🔥 GENERATION using device: {device}")
+                print(f"Generation using device: {device}")
                 input_ids = batch["input_ids"].to(device)
                 attention_mask = batch["attention_mask"].to(device)
                 labels = batch["labels"].to(device)

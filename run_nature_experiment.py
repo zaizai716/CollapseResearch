@@ -1,9 +1,4 @@
 #!/usr/bin/env python3
-"""
-Run the exact Nature paper experiment with comprehensive metrics.
-Tracks both Nature paper metrics (perplexity, loss) and additional diversity metrics.
-"""
-
 import os
 import sys
 import subprocess
@@ -13,10 +8,8 @@ import numpy as np
 from pathlib import Path
 from collections import Counter
 
-# Disable HF_TRANSFER to avoid download issues
 os.environ['HF_HUB_ENABLE_HF_TRANSFER'] = '0'
 
-# Add the Nature paper code directory to path
 sys.path.append('Zakahler-curse_recurse-b48c90a')
 
 def calculate_diversity_metrics(text_samples):
@@ -75,7 +68,6 @@ def calculate_nature_paper_metrics(model_path, tokenizer_name="facebook/opt-125m
             checkpoint = torch.load(model_path, map_location='cpu')
             state_dict = checkpoint['state_dict']
             
-            # Remove 'model.' prefix from keys
             new_state_dict = {}
             for k, v in state_dict.items():
                 if k.startswith('model.'):
@@ -126,7 +118,6 @@ def calculate_nature_paper_metrics(model_path, tokenizer_name="facebook/opt-125m
         metrics['effective_vocab_size'] = int(effective_vocab)
         
         # 2. Token diversity
-        # Generate longer sequences and analyze token usage patterns
         num_sequences = 20
         generated_tokens = []
         
@@ -176,7 +167,6 @@ def generate_samples(model_path, num_samples=20):
             checkpoint = torch.load(model_path, map_location='cpu')
             state_dict = checkpoint['state_dict']
             
-            # Remove 'model.' prefix from keys
             new_state_dict = {}
             for k, v in state_dict.items():
                 if k.startswith('model.'):
@@ -290,13 +280,13 @@ def run_generation_experiment(num_generations=5, collect_extra_metrics=True):
         # Build command with Nature paper's exact settings
         cmd = [
             "python3", "Zakahler-curse_recurse-b48c90a/main.py",
-            "--model_tag", "facebook/opt-125m",  # Their default model
-            "--batch-size", "128",                # Their batch size
-            "--learning-rate", "2e-5",            # Their LR
-            "--max-epochs", "5",                  # Their epochs
+            "--model_tag", "facebook/opt-125m", 
+            "--batch-size", "128",           
+            "--learning-rate", "2e-5",           
+            "--max-epochs", "5",                 
             "--save-name", str(gen_dir) + "/",
-            "--accelerator", "gpu",               # Force GPU usage
-            "--num_devices", "1",                 # Single GPU
+            "--accelerator", "gpu",               
+            "--num_devices", "1",                
         ]
         
         if gen == 0:
@@ -316,7 +306,7 @@ def run_generation_experiment(num_generations=5, collect_extra_metrics=True):
                 "--model_tag", "facebook/opt-125m",
                 "--load-name", str(prev_gen_dir / "best.ckpt"),
                 "--generate", str(gen_dir / f"generated_data_gen{gen}"),
-                # exact generation settings from main.py line 307
+                # using generation settings from nature paper
                 # num_beams=5, max_new_tokens=64, min_new_tokens=64, repetition_penalty=3.0
             ]
             
@@ -333,7 +323,6 @@ def run_generation_experiment(num_generations=5, collect_extra_metrics=True):
                 "--load-generate", str(gen_dir / f"generated_data_gen{gen}.pkl"),
             ])
         
-        # run training with HF_TRANSFER disabled
         print(f"  running: {' '.join(cmd[:5])}...")
         result = subprocess.run(cmd, capture_output=True, text=True, env=env)
         
@@ -341,7 +330,6 @@ def run_generation_experiment(num_generations=5, collect_extra_metrics=True):
             print(f"training failed: {result.stderr}")
             continue
         
-        # Parse Nature paper metrics from output
         perplexity = None
         train_loss = None
         val_loss = None
@@ -381,7 +369,7 @@ def run_generation_experiment(num_generations=5, collect_extra_metrics=True):
             "model_path": str(gen_dir / "best.ckpt")
         }
         
-        # generate samples and calc additional metrics if requested
+        # generate samples and calc additional metrics
         if collect_extra_metrics:
             print(f"calculating metrics for gen {gen}...")
             model_path = gen_dir / "best.ckpt"
@@ -477,18 +465,18 @@ def run_generation_experiment(num_generations=5, collect_extra_metrics=True):
             initial_ppl = metrics_history[0]['nature_metrics']['perplexity']
             final_ppl = metrics_history[-1]['nature_metrics']['perplexity']
             degradation = (final_ppl / initial_ppl - 1) * 100
-            print(f"\n   📊 NATURE PAPER RESULT: {degradation:.1f}% perplexity increase")
+            print(f"\n   Nature Paper Result: {degradation:.1f}% perplexity increase")
             
         if collect_extra_metrics and "additional_metrics" in metrics_history[0] and "additional_metrics" in metrics_history[-1]:
             initial_div = metrics_history[0]['additional_metrics']['vocab_diversity']
             final_div = metrics_history[-1]['additional_metrics']['vocab_diversity']
             if initial_div > 0:
                 div_loss = (1 - final_div / initial_div) * 100
-                print(f"   📊 ADDITIONAL FINDING: {div_loss:.1f}% diversity decrease")
+                print(f"   Additional Finding: {div_loss:.1f}% diversity decrease")
 
 if __name__ == "__main__":
     # First, check if we have the required dependencies
-    print("🔍 Checking dependencies...")
+    print("Checking dependencies...")
     
     # Check if the Nature codebase is present
     if not Path("Zakahler-curse_recurse-b48c90a/main.py").exists():
@@ -507,5 +495,4 @@ if __name__ == "__main__":
     
     print("\nDependencies ready")
     
-    # Run the experiment with full metrics
     run_generation_experiment(num_generations=5, collect_extra_metrics=True)
