@@ -32,14 +32,21 @@ echo "3. Installing dependencies..."
 pip install --upgrade pip
 
 # Install PyTorch with CUDA support
-# RunPod templates come with PyTorch pre-installed, but we'll ensure the right version
-# Check if PyTorch is already installed with CUDA
-if python3 -c "import torch; assert torch.cuda.is_available()" 2>/dev/null; then
-    echo "PyTorch with CUDA already installed and working!"
-else
-    echo "Installing PyTorch with CUDA 12.4 support..."
-    pip install torch==2.4.0 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
-fi
+# CRITICAL: Must use PyTorch 2.6+ due to CVE-2025-32434 vulnerability
+echo "Checking PyTorch version..."
+python3 -c "import torch; print(f'Current PyTorch: {torch.__version__}')" 2>/dev/null || echo "PyTorch not installed"
+
+# Install or upgrade to PyTorch 2.6+ (required for transformers security fix)
+echo "Installing/Upgrading to PyTorch 2.6+ (required for security fix)..."
+pip install torch>=2.6.0 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+
+# Verify installation
+python3 -c "
+import torch
+assert torch.__version__ >= '2.6.0', f'PyTorch {torch.__version__} is too old. Need 2.6+'
+assert torch.cuda.is_available(), 'CUDA not available!'
+print(f'✓ PyTorch {torch.__version__} with CUDA installed successfully')
+"
 
 # Install other required packages
 pip install pytorch-lightning transformers datasets numpy tqdm tensorboard tensorboardX hf_transfer accelerate

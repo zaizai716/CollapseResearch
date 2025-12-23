@@ -1,5 +1,10 @@
 # RunPod Setup Instructions for Model Collapse Experiment
 
+## ⚠️ CRITICAL: PyTorch 2.6+ Required
+
+**Security Alert**: Due to CVE-2025-32434 vulnerability, PyTorch 2.6+ is REQUIRED.
+The transformers library now blocks loading models with PyTorch < 2.6.
+
 ## ⚠️ IMPORTANT: GPU Requirements
 
 **DO NOT USE RTX 5090** - It's not supported by PyTorch yet (as of Dec 2024)
@@ -15,9 +20,10 @@
 ### 1. Create RunPod Instance
 1. Go to [RunPod.io](https://runpod.io)
 2. Select **RTX 4090** GPU (NOT RTX 5090!)
-3. **IMPORTANT**: Choose template **"RunPod PyTorch 2.4"** or **"RunPod PyTorch 2.1"**
-   - These templates come with CUDA pre-configured
-   - Ensure CUDA version matches (use Additional Filters → CUDA Versions)
+3. **IMPORTANT**: Choose template **"PyTorch 2.8 + CUDA 12.8"** or **"PyTorch 2.6+"**
+   - Must use PyTorch 2.6+ due to CVE-2025-32434 security vulnerability
+   - Templates come with CUDA pre-configured
+   - Template name: `runpod/pytorch:2.8.0-py3.11-cuda12.8.1-cudnn-devel-ubuntu22.04`
 4. Set GPU count to 1
 5. Launch the instance
 
