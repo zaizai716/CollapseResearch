@@ -31,8 +31,15 @@ echo ""
 echo "3. Installing dependencies..."
 pip install --upgrade pip
 
-# Install PyTorch with CUDA 12.4 support (compatible with RTX 4090)
-pip install torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu124
+# Install PyTorch with CUDA support
+# RunPod templates come with PyTorch pre-installed, but we'll ensure the right version
+# Check if PyTorch is already installed with CUDA
+if python3 -c "import torch; assert torch.cuda.is_available()" 2>/dev/null; then
+    echo "PyTorch with CUDA already installed and working!"
+else
+    echo "Installing PyTorch with CUDA 12.4 support..."
+    pip install torch==2.4.0 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+fi
 
 # Install other required packages
 pip install pytorch-lightning transformers datasets numpy tqdm tensorboard tensorboardX hf_transfer accelerate

@@ -255,8 +255,17 @@ def main():
         print(f"✓ CUDA is available! Using GPU: {torch.cuda.get_device_name(0)}")
         print(f"  CUDA version: {torch.version.cuda}")
         print(f"  PyTorch version: {torch.__version__}")
+        print(f"  Number of GPUs: {torch.cuda.device_count()}")
+        
+        # Explicitly set CUDA device
+        torch.cuda.set_device(0)
+        
+        # Force PyTorch Lightning to use GPU
         accelerator = 'gpu'
         devices = 1
+        
+        # Set default tensor type to CUDA for better GPU utilization
+        torch.set_default_tensor_type('torch.cuda.FloatTensor')
     else:
         print("⚠️ WARNING: CUDA not available, falling back to CPU")
         accelerator = 'cpu'

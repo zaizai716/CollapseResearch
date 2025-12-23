@@ -23,7 +23,8 @@ def test_cuda():
         print("\n⚠️ ERROR: CUDA is not available!")
         print("Make sure you:")
         print("1. Selected a GPU instance on RunPod (RTX 4090 recommended)")
-        print("2. Installed PyTorch with CUDA support")
+        print("2. Selected a PyTorch template with CUDA support")
+        print("3. CUDA version matches template requirements")
         return False
     
     # Print GPU information

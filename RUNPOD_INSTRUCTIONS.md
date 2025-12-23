@@ -15,8 +15,11 @@
 ### 1. Create RunPod Instance
 1. Go to [RunPod.io](https://runpod.io)
 2. Select **RTX 4090** GPU (NOT RTX 5090!)
-3. Choose a template with PyTorch 2.0+ or use base Ubuntu
-4. Launch the instance
+3. **IMPORTANT**: Choose template **"RunPod PyTorch 2.4"** or **"RunPod PyTorch 2.1"**
+   - These templates come with CUDA pre-configured
+   - Ensure CUDA version matches (use Additional Filters → CUDA Versions)
+4. Set GPU count to 1
+5. Launch the instance
 
 ### 2. Connect to Instance
 ```bash

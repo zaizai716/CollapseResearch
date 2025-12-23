@@ -284,9 +284,7 @@ def run_generation_experiment(num_generations=5, collect_extra_metrics=True):
             "--batch-size", "128",           
             "--learning-rate", "2e-5",           
             "--max-epochs", "5",                 
-            "--save-name", str(gen_dir) + "/",
-            "--accelerator", "gpu",               
-            "--num_devices", "1",                
+            "--save-name", str(gen_dir) + "/",                
         ]
         
         if gen == 0:
