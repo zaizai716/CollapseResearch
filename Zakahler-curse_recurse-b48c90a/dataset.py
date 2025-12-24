@@ -94,7 +94,8 @@ class MyDataLoader(pl.LightningDataModule):
             self.train_dataset,
             batch_size=self.batch_size,
             shuffle=True,
-            num_workers=self.num_workers)
+            num_workers=self.num_workers,
+            collate_fn=self.collate_fn if hasattr(self, 'collate_fn') else None)
 
         self.val_dataloader = DataLoader(
             self.val_dataset,

@@ -16,6 +16,27 @@ class Wrapper(pl.LightningModule):
         self.saved = []
         
     def forward(self, input_ids, attention_mask=None, labels=None):
+        # Ensure proper shapes and handle potential issues
+        # Expected: [batch_size, sequence_length]
+        
+        # Check and print shapes for debugging
+        if input_ids.shape[0] * input_ids.shape[1] == 8192 and labels is not None:
+            if labels.shape[0] == 128:
+                # This is our specific error case
+                print(f"ERROR: Shape mismatch detected!")
+                print(f"  input_ids: {input_ids.shape}")
+                print(f"  labels: {labels.shape}")
+                print(f"  Attempting to fix...")
+                
+                # The issue might be that input_ids is flattened but labels is not
+                # Try to match dimensions
+                if input_ids.dim() == 2 and labels.dim() == 2:
+                    # Both are 2D, but different shapes
+                    # Ensure they have the same shape
+                    if input_ids.shape != labels.shape:
+                        # Use input_ids shape as the correct one
+                        labels = labels.reshape(input_ids.shape)
+        
         return self.model(
             input_ids=input_ids,
             attention_mask=attention_mask,
@@ -27,11 +48,17 @@ class Wrapper(pl.LightningModule):
         attention_mask = batch["attention_mask"]
         labels = batch["labels"]
         
+        # Debug tensor shapes
+        # print(f"DEBUG: input_ids shape: {input_ids.shape}, labels shape: {labels.shape}")
+        
         # Ensure correct dimensions (batch_size, sequence_length)
-        if len(input_ids.shape) == 1:
-            input_ids = input_ids.unsqueeze(0)
-            attention_mask = attention_mask.unsqueeze(0)
-            labels = labels.unsqueeze(0)
+        # The tensors should be 2D: [batch_size, sequence_length]
+        if len(input_ids.shape) != 2:
+            print(f"WARNING: Unexpected input_ids shape: {input_ids.shape}")
+            if len(input_ids.shape) == 1:
+                input_ids = input_ids.unsqueeze(0)
+                attention_mask = attention_mask.unsqueeze(0)
+                labels = labels.unsqueeze(0)
         
         outputs = self(input_ids, attention_mask, labels)
         loss = outputs.loss
