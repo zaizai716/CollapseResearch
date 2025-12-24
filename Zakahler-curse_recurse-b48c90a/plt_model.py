@@ -27,6 +27,12 @@ class Wrapper(pl.LightningModule):
         attention_mask = batch["attention_mask"]
         labels = batch["labels"]
         
+        # Ensure correct dimensions (batch_size, sequence_length)
+        if len(input_ids.shape) == 1:
+            input_ids = input_ids.unsqueeze(0)
+            attention_mask = attention_mask.unsqueeze(0)
+            labels = labels.unsqueeze(0)
+        
         outputs = self(input_ids, attention_mask, labels)
         loss = outputs.loss
         
@@ -38,6 +44,12 @@ class Wrapper(pl.LightningModule):
         input_ids = batch["input_ids"]
         attention_mask = batch["attention_mask"]
         labels = batch["labels"]
+        
+        # Ensure correct dimensions (batch_size, sequence_length)
+        if len(input_ids.shape) == 1:
+            input_ids = input_ids.unsqueeze(0)
+            attention_mask = attention_mask.unsqueeze(0)
+            labels = labels.unsqueeze(0)
         
         outputs = self(input_ids, attention_mask, labels)
         loss = outputs.loss
@@ -51,6 +63,12 @@ class Wrapper(pl.LightningModule):
         input_ids = batch["input_ids"]
         attention_mask = batch["attention_mask"]
         labels = batch["labels"]
+        
+        # Ensure correct dimensions (batch_size, sequence_length)
+        if len(input_ids.shape) == 1:
+            input_ids = input_ids.unsqueeze(0)
+            attention_mask = attention_mask.unsqueeze(0)
+            labels = labels.unsqueeze(0)
         
         outputs = self(input_ids, attention_mask, labels)
         loss = outputs.loss

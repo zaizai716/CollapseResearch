@@ -205,6 +205,12 @@ def main():
     tokenizer = AutoTokenizer.from_pretrained(model_tag,
                                               cache_dir='./model_cache_dir',
                                               return_dict=True)
+    
+    # Fix for OPT models: set pad_token to eos_token if not set
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+        print(f"Set pad_token to eos_token: {tokenizer.pad_token}")
+    
     print(f"Loaded tokenizer from HuggingFace")
 
     raw_dataset = prepare_data()
