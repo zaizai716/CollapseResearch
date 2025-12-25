@@ -344,7 +344,9 @@ def main():
                     #preds = outputs.logits.argmax(-1)
 
                     outputs = model.generate(input_ids, num_beams=5, max_new_tokens=64, min_new_tokens=64, repetition_penalty=3.0)
-                    preds = outputs[:, 64:]
+                    # Take the last 64 tokens (the newly generated ones)
+                    # outputs includes both input and generated, so we need the last 64
+                    preds = outputs[:, -64:]  # Changed from 64: to -64: to get last 64 tokens
 
                     #print(f"IInput {len(input_ids[0])}:", tokenizer.decode(input_ids[0]))
                     #print(f"Labels {len(labels[0])}:", tokenizer.decode(labels[0]))
@@ -354,7 +356,8 @@ def main():
 
                     batch["input_ids"] = preds.cpu().detach()
                     batch["labels"]    = preds.cpu().detach()
-                    batch["attention_mask"] = attention_mask.cpu().detach()
+                    # Create attention mask of ones matching the preds shape
+                    batch["attention_mask"] = torch.ones_like(preds).cpu().detach()
 
                 #print("Input:", tokenizer.decode(input_ids[0]))
                 #print(f"Output {len(labels[0])}:", tokenizer.decode(labels[0]))
