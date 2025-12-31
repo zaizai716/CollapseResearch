@@ -7,13 +7,141 @@ import torch
 import numpy as np
 from pathlib import Path
 from collections import Counter
+import shutil
 
 os.environ['HF_HUB_ENABLE_HF_TRANSFER'] = '0'
 
 sys.path.append('Zakahler-curse_recurse-b48c90a')
 
+# Hugging Face configuration
+HF_REPO_ID = "zaizaiiiii/model-collapse-experiment"  # Your HF username
+HF_TOKEN = os.environ.get('HF_TOKEN', None)  # Set with: export HF_TOKEN="your-token"
+
+def setup_huggingface():
+    """Setup Hugging Face for model uploads"""
+    try:
+        from huggingface_hub import HfApi, create_repo
+        api = HfApi()
+        
+        # Create repo if it doesn't exist
+        try:
+            create_repo(HF_REPO_ID, repo_type="model", token=HF_TOKEN, exist_ok=True)
+            print(f"✓ Hugging Face repo ready: {HF_REPO_ID}")
+            return api
+        except Exception as e:
+            print(f"⚠️ Could not create HF repo (may already exist): {e}")
+            return api
+    except ImportError:
+        print("Installing huggingface-hub...")
+        subprocess.run(["pip", "install", "-q", "huggingface-hub"])
+        return setup_huggingface()
+
+def upload_to_huggingface(file_path, repo_path, api):
+    """Upload a file to Hugging Face and delete local copy"""
+    try:
+        from huggingface_hub import upload_file
+        
+        print(f"  Uploading {file_path} to Hugging Face...")
+        upload_file(
+            path_or_fileobj=str(file_path),
+            path_in_repo=repo_path,
+            repo_id=HF_REPO_ID,
+            token=HF_TOKEN
+        )
+        print(f"  ✓ Uploaded to HF: {repo_path}")
+        return True
+    except Exception as e:
+        print(f"  ✗ Upload failed: {e}")
+        print(f"  ⚠️ Keeping local file due to upload failure")
+        return False
+
+def download_from_huggingface(repo_path, local_path, api):
+    """Download a file from Hugging Face when needed"""
+    try:
+        from huggingface_hub import hf_hub_download
+        
+        print(f"  Downloading {repo_path} from Hugging Face...")
+        downloaded_path = hf_hub_download(
+            repo_id=HF_REPO_ID,
+            filename=repo_path,
+            local_dir=os.path.dirname(local_path),
+            token=HF_TOKEN
+        )
+        
+        # Move to exact location if needed
+        if downloaded_path != local_path:
+            shutil.move(downloaded_path, local_path)
+        
+        print(f"  ✓ Downloaded to: {local_path}")
+        return True
+    except Exception as e:
+        print(f"  ✗ Download failed: {e}")
+        return False
+
+def cleanup_unnecessary_files(gen_dir):
+    """Delete unnecessary files to save space"""
+    # Delete last.ckpt files (we only need best.ckpt)
+    last_ckpt = gen_dir / "last.ckpt"
+    if last_ckpt.exists():
+        os.remove(last_ckpt)
+        print(f"  ✓ Deleted last.ckpt to save space")
+    
+    # Delete lightning_logs
+    lightning_logs = gen_dir / "lightning_logs"
+    if lightning_logs.exists():
+        shutil.rmtree(lightning_logs)
+        print(f"  ✓ Deleted lightning_logs to save space")
+    
+    # Delete __pycache__
+    for pycache in gen_dir.glob("**/__pycache__"):
+        shutil.rmtree(pycache)
+
+def manage_disk_space(current_gen, base_dir, hf_api):
+    """Intelligent disk space management"""
+    print(f"\n=== Managing Disk Space ===")
+    
+    # Clean current generation
+    cleanup_unnecessary_files(base_dir / f"gen_{current_gen}")
+    
+    # Upload current generation to HF and delete old ones
+    if current_gen >= 0:
+        current_checkpoint = base_dir / f"gen_{current_gen}" / "best.ckpt"
+        if current_checkpoint.exists():
+            # Upload to Hugging Face
+            if hf_api and HF_TOKEN:
+                success = upload_to_huggingface(
+                    current_checkpoint,
+                    f"gen_{current_gen}/best.ckpt",
+                    hf_api
+                )
+                
+                # Delete older generations (keep only current and previous)
+                if success and current_gen >= 2:
+                    old_gen = current_gen - 2
+                    old_gen_dir = base_dir / f"gen_{old_gen}"
+                    if old_gen_dir.exists():
+                        shutil.rmtree(old_gen_dir)
+                        print(f"  ✓ Deleted gen_{old_gen} directory (backed up to HF)")
+    
+    # Delete generated data from previous generation once current is trained
+    if current_gen > 0:
+        prev_data = base_dir / f"gen_{current_gen}" / f"generated_data_gen{current_gen}.pkl"
+        if prev_data.exists() and (base_dir / f"gen_{current_gen}" / "best.ckpt").exists():
+            os.remove(prev_data)
+            print(f"  ✓ Deleted generated_data_gen{current_gen}.pkl (model already trained)")
+    
+    # Show disk usage
+    try:
+        result = subprocess.run(["df", "-h", "/"], capture_output=True, text=True)
+        for line in result.stdout.split('\n'):
+            if '/' in line and 'Filesystem' not in line:
+                print(f"  Disk usage: {line}")
+                break
+    except:
+        pass
+
 def calculate_diversity_metrics(text_samples):
-    """Calculate comprehensive diversity and quality metrics."""
+    """Calculate vocabulary and n-gram diversity metrics."""
     metrics = {}
     
     # Combine all samples
@@ -58,7 +186,7 @@ def calculate_nature_paper_metrics(model_path, tokenizer_name="facebook/opt-125m
     metrics = {}
     
     try:
-        # Load model and tokenizer
+        # Load tokenizer
         tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
         if tokenizer.pad_token is None:
             tokenizer.pad_token = tokenizer.eos_token
@@ -85,7 +213,6 @@ def calculate_nature_paper_metrics(model_path, tokenizer_name="facebook/opt-125m
         model = model.to(device)
         
         # 1. Distribution analysis - Probability mass in tails
-        # Generate many samples and analyze token probability distributions
         test_prompts = ["The", "In", "A", "This", "Today"]
         all_token_probs = []
         
@@ -214,6 +341,7 @@ def generate_samples(model_path, num_samples=20):
 def run_generation_experiment(num_generations=5, collect_extra_metrics=True):
     """
     Run the recursive training experiment with Nature paper settings.
+    Now with Hugging Face backup and intelligent space management.
     """
     
     print("\n=== Nature Collapse Experiment ===")
@@ -221,17 +349,14 @@ def run_generation_experiment(num_generations=5, collect_extra_metrics=True):
     print("Dataset: WikiText2")
     print("Generations: 5 recursive cycles")
     print("Batch size: 128, LR: 2e-5, Epochs: 5")
-    print("\nMetrics tracked:")
-    print("- Perplexity (main)")
-    print("- Train/val loss")
-    print("- Generated samples")
-    print("- Distribution analysis")
-    print("- Token diversity")
     
-    if collect_extra_metrics:
-        print("\nAdditional metrics:")
-        print("- Vocab diversity")
-        print("- N-gram diversity")
+    # Setup Hugging Face
+    hf_api = None
+    if HF_TOKEN:
+        hf_api = setup_huggingface()
+    else:
+        print("⚠️ No HF_TOKEN set. Skipping Hugging Face uploads.")
+        print("  Set with: export HF_TOKEN='your-token-here'")
     
     print("\n" + "="*40 + "\n")
     
@@ -249,8 +374,14 @@ def run_generation_experiment(num_generations=5, collect_extra_metrics=True):
         
         # Check if this generation is already trained
         checkpoint_path = gen_dir / "best.ckpt"
+        
+        # Try to download from HF if not local
+        if not checkpoint_path.exists() and hf_api:
+            print(f"Checking Hugging Face for gen_{gen}...")
+            download_from_huggingface(f"gen_{gen}/best.ckpt", checkpoint_path, hf_api)
+        
         if checkpoint_path.exists():
-            print(f"Gen {gen} already done, skipping")
+            print(f"Gen {gen} already done, skipping training")
             
             # Still calculate metrics for this generation
             metrics = {
@@ -271,11 +402,21 @@ def run_generation_experiment(num_generations=5, collect_extra_metrics=True):
                 metrics["num_samples"] = len(samples)
             
             metrics_history.append(metrics)
+            
+            # Space management
+            manage_disk_space(gen, base_dir, hf_api)
             continue  # Skip to next generation
         
         # Set environment variable to disable HF_TRANSFER for this subprocess
         env = os.environ.copy()
         env['HF_HUB_ENABLE_HF_TRANSFER'] = '0'
+        
+        # Force GPU usage
+        if torch.cuda.is_available():
+            env['CUDA_VISIBLE_DEVICES'] = '0'
+            accelerator_arg = 'gpu'
+        else:
+            accelerator_arg = 'auto'
         
         # Build command with Nature paper's exact settings
         cmd = [
@@ -285,28 +426,39 @@ def run_generation_experiment(num_generations=5, collect_extra_metrics=True):
             "--learning-rate", "2e-5",           
             "--max-epochs", "5",                 
             "--save-name", str(gen_dir) + "/",
-            "--num_workers", "0",  # Set to 0 to avoid CUDA multiprocessing issues               
+            "--num_workers", "0",  # Set to 0 to avoid CUDA multiprocessing issues
+            "--accelerator", accelerator_arg,  # Force GPU usage               
         ]
         
         if gen == 0:
             # gen 0: train on original wikitext2
             print("training on original wikitext2...")
-            # add pretrained flag for gen 0 to load from HF
             cmd.append("--pretrained")
         else:
-            # later gens: load prev model and generated data
-            prev_gen_dir = base_dir / f"gen_{gen-1}"
+            # later gens: need previous model
+            prev_gen = gen - 1
+            prev_checkpoint = base_dir / f"gen_{prev_gen}" / "best.ckpt"
+            
+            # Download previous gen from HF if needed
+            if not prev_checkpoint.exists() and hf_api:
+                print(f"Downloading gen_{prev_gen} from Hugging Face...")
+                download_from_huggingface(f"gen_{prev_gen}/best.ckpt", prev_checkpoint, hf_api)
+            
+            if not prev_checkpoint.exists():
+                print(f"ERROR: Previous generation {prev_gen} model not found!")
+                print(f"  Looking for: {prev_checkpoint}")
+                break
             
             # first generate synthetic data from prev model
-            print(f"generating synthetic data from gen {gen-1}...")
+            print(f"generating synthetic data from gen {prev_gen}...")
             
             gen_cmd = [
                 "python3", "Zakahler-curse_recurse-b48c90a/main.py",
                 "--model_tag", "facebook/opt-125m",
-                "--load-name", str(prev_gen_dir / "best.ckpt"),
+                "--load-name", str(prev_checkpoint),
                 "--generate", str(gen_dir / f"generated_data_gen{gen}"),
-                # using generation settings from nature paper
-                # num_beams=5, max_new_tokens=64, min_new_tokens=64, repetition_penalty=3.0
+                "--num_workers", "0",
+                "--accelerator", accelerator_arg,
             ]
             
             print(f"  cmd: {' '.join(gen_cmd[:5])}...")
@@ -373,12 +525,12 @@ def run_generation_experiment(num_generations=5, collect_extra_metrics=True):
             print(f"calculating metrics for gen {gen}...")
             model_path = gen_dir / "best.ckpt"
             
-            # calc nature paper metrics (distribution analysis & token diversity)
-            print(f"  calculating nature paper metrics...")
-            nature_extra_metrics = calculate_nature_paper_metrics(model_path)
-            metrics["nature_distribution_metrics"] = nature_extra_metrics
-            
             if model_path.exists():
+                # calc nature paper metrics (distribution analysis & token diversity)
+                print(f"  calculating nature paper metrics...")
+                nature_extra_metrics = calculate_nature_paper_metrics(model_path)
+                metrics["nature_distribution_metrics"] = nature_extra_metrics
+                
                 samples = generate_samples(model_path, num_samples=20)
                 diversity_metrics = calculate_diversity_metrics(samples)
                 
@@ -386,6 +538,7 @@ def run_generation_experiment(num_generations=5, collect_extra_metrics=True):
                 with open(gen_dir / "sample_texts.json", "w") as f:
                     json.dump(samples[:10], f, indent=2)
             else:
+                nature_extra_metrics = {}
                 diversity_metrics = {
                     'vocab_diversity': 0,
                     '1gram_diversity': 0,
@@ -395,10 +548,14 @@ def run_generation_experiment(num_generations=5, collect_extra_metrics=True):
                 }
                 samples = []
             
+            metrics["nature_distribution_metrics"] = nature_extra_metrics
             metrics["additional_metrics"] = diversity_metrics
             metrics["num_samples"] = len(samples)
         
         metrics_history.append(metrics)
+        
+        # Space management after each generation
+        manage_disk_space(gen, base_dir, hf_api)
         
         # print current generation metrics
         print(f"\ngen {gen} results:")
@@ -435,6 +592,10 @@ def run_generation_experiment(num_generations=5, collect_extra_metrics=True):
     print(f"results saved to: nature_exact_experiment/")
     print(f"metrics: nature_exact_experiment/metrics_history.json")
     
+    # Upload final metrics to HF
+    if hf_api and (base_dir / "metrics_history.json").exists():
+        upload_to_huggingface(base_dir / "metrics_history.json", "metrics_history.json", hf_api)
+    
     # print summary
     if len(metrics_history) > 1:
         print("\nmodel collapse progression:")
@@ -444,25 +605,29 @@ def run_generation_experiment(num_generations=5, collect_extra_metrics=True):
         print("   Generation | Perplexity")
         print("   " + "-"*30)
         for m in metrics_history:
-            nm = m['nature_metrics']
-            ppl_str = f"{nm['perplexity']:.2f}" if nm['perplexity'] else "N/A"
-            print(f"   {m['generation']:^10} | {ppl_str:^10}")
+            if 'nature_metrics' in m:
+                nm = m['nature_metrics']
+                ppl_str = f"{nm['perplexity']:.2f}" if nm.get('perplexity') else "N/A"
+                print(f"   {m['generation']:^10} | {ppl_str:^10}")
         
         # Additional metrics if collected
         if collect_extra_metrics and "additional_metrics" in metrics_history[0]:
             print("\n  ADDITIONAL METRICS:")
-            print("   Generation | Vocab Div | 2-gram Div | Entropy")
-            print("   " + "-"*50)
+            print("   Generation | Vocab Div | 2-gram Div")
+            print("   " + "-"*40)
             for m in metrics_history:
                 if "additional_metrics" in m:
                     am = m['additional_metrics']
                     print(f"   {m['generation']:^10} | {am['vocab_diversity']:^9.3f} | "
-                          f"{am['2gram_diversity']:^10.3f} | {am['word_entropy']:^7.2f}")
+                          f"{am['2gram_diversity']:^10.3f}")
         
         # Calculate degradation
-        if metrics_history[0]['nature_metrics'].get('perplexity') and metrics_history[-1]['nature_metrics'].get('perplexity'):
-            initial_ppl = metrics_history[0]['nature_metrics']['perplexity']
-            final_ppl = metrics_history[-1]['nature_metrics']['perplexity']
+        first_with_ppl = next((m for m in metrics_history if m.get('nature_metrics', {}).get('perplexity')), None)
+        last_with_ppl = next((m for m in reversed(metrics_history) if m.get('nature_metrics', {}).get('perplexity')), None)
+        
+        if first_with_ppl and last_with_ppl:
+            initial_ppl = first_with_ppl['nature_metrics']['perplexity']
+            final_ppl = last_with_ppl['nature_metrics']['perplexity']
             degradation = (final_ppl / initial_ppl - 1) * 100
             print(f"\n   Nature Paper Result: {degradation:.1f}% perplexity increase")
             
@@ -483,15 +648,29 @@ if __name__ == "__main__":
         print("   Please ensure Zakahler-curse_recurse-b48c90a/ directory exists")
         sys.exit(1)
     
-    # Install required packages if needed, including hf_transfer to fix the error
+    # Install required packages if needed
     print("Installing required packages...")
     subprocess.run([
         "pip3", "install", "-q",
         "torch", "transformers", "datasets", 
         "pytorch-lightning", "numpy", "tqdm",
-        "tensorboard", "tensorboardX", "hf_transfer"
+        "huggingface-hub"  # Added for uploads
     ])
     
+    # Check GPU
+    if torch.cuda.is_available():
+        print(f"✓ GPU available: {torch.cuda.get_device_name(0)}")
+    else:
+        print("⚠️ No GPU detected, will run on CPU (very slow)")
+    
     print("\nDependencies ready")
+    
+    # Check for HF token
+    if not os.environ.get('HF_TOKEN'):
+        print("\n" + "="*60)
+        print("⚠️ IMPORTANT: Set your Hugging Face token for automatic backups:")
+        print("   export HF_TOKEN='your-token-here'")
+        print("   Get token from: https://huggingface.co/settings/tokens")
+        print("="*60 + "\n")
     
     run_generation_experiment(num_generations=5, collect_extra_metrics=True)

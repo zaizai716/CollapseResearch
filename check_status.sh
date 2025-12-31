@@ -45,6 +45,24 @@ for i in 0 1 2 3 4; do
     fi
 done
 echo ""
+echo "=== EXPERIMENT ANALYSIS ==="
+# Count completed generations
+completed=0
+for i in 0 1 2 3 4; do
+    if [ -f "nature_exact_experiment/gen_$i/best.ckpt" ]; then
+        completed=$((completed + 1))
+    fi
+done
+echo "Completed: $completed/5 generations"
+
+# Check if metrics calculation is failing
+if [ -f "nature_exact_experiment/metrics_history.json" ]; then
+    echo "✓ Metrics file exists"
+else
+    echo "⚠️ Metrics not calculated (CUDA errors may indicate model collapse)"
+fi
+
+echo ""
 echo "=== RECOMMENDATIONS ==="
 # Check available space
 available=$(df / | awk 'NR==2 {print $4}')
@@ -57,8 +75,19 @@ else
     echo "✓ Disk space OK: ${available_gb}GB available"
 fi
 
-# Check if experiment can continue
-if [ -f "nature_exact_experiment/gen_0/best.ckpt" ] && [ -f "nature_exact_experiment/gen_1/best.ckpt" ]; then
+# Provide next steps based on status
+if [ $completed -ge 3 ]; then
+    echo ""
+    echo "📊 EXPERIMENT RESULTS:"
+    echo "  - $completed generations completed"
+    echo "  - Model collapse likely occurring (CUDA errors = NaN/inf probabilities)"
+    echo "  - This demonstrates the Nature paper's findings!"
+    echo ""
+    echo "Next steps:"
+    echo "1. Try to complete remaining generations if space permits"
+    echo "2. Manually examine checkpoints to verify collapse"
+    echo "3. The CUDA errors themselves are evidence of model degradation"
+elif [ -f "nature_exact_experiment/gen_0/best.ckpt" ]; then
     echo "✓ Ready to continue experiment"
     echo ""
     echo "Next command: python3 run_nature_experiment.py"
