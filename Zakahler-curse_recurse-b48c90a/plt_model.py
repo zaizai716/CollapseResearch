@@ -1,7 +1,7 @@
 import torch
 import pytorch_lightning as pl
 from torch.optim import AdamW
-from torch.optim.lr_scheduler import LinearLR
+from torch.optim.lr_scheduler import LinearLR, SequentialLR, ConstantLR
 import numpy as np
 
 
@@ -62,7 +62,12 @@ class Wrapper(pl.LightningModule):
         
         outputs = self(input_ids, attention_mask, labels)
         loss = outputs.loss
-        
+
+        # Check for NaN/Inf and skip if detected
+        if torch.isnan(loss) or torch.isinf(loss):
+            print(f"WARNING: NaN/Inf loss detected at batch {batch_idx}, skipping...")
+            return None  # Skip this batch
+
         # Log training loss for monitoring
         self.log("train_loss", loss, on_step=True, on_epoch=True, prog_bar=True)
         return loss
@@ -114,16 +119,31 @@ class Wrapper(pl.LightningModule):
         return {"loss": loss, "perplexity": perplexity}
     
     def configure_optimizers(self):
-        optimizer = AdamW(self.parameters(), lr=self.learning_rate)
-        
-        # Linear decay of learning rate over training
-        scheduler = LinearLR(
+        optimizer = AdamW(self.parameters(), lr=self.learning_rate, weight_decay=0.01)
+
+        # Warmup for first epoch, then linear decay
+        warmup_scheduler = LinearLR(
+            optimizer,
+            start_factor=0.1,  # Start at 10% of lr
+            end_factor=1.0,    # Warmup to 100%
+            total_iters=1      # Warmup over 1 epoch
+        )
+
+        # Linear decay after warmup
+        decay_scheduler = LinearLR(
             optimizer,
             start_factor=1.0,
             end_factor=0.1,
-            total_iters=self.epochs
+            total_iters=self.epochs - 1
         )
-        
+
+        # Combine warmup + decay
+        scheduler = SequentialLR(
+            optimizer,
+            schedulers=[warmup_scheduler, decay_scheduler],
+            milestones=[1]  # Switch after epoch 1
+        )
+
         return {
             "optimizer": optimizer,
             "lr_scheduler": {
@@ -131,3 +151,23 @@ class Wrapper(pl.LightningModule):
                 "interval": "epoch"
             }
         }
+
+    def on_before_optimizer_step(self, optimizer):
+        # Check for NaN/Inf in gradients and zero them out if found
+        has_nan_grad = False
+        for name, param in self.named_parameters():
+            if param.grad is not None:
+                if torch.isnan(param.grad).any() or torch.isinf(param.grad).any():
+                    has_nan_grad = True
+                    param.grad.zero_()  # Zero out bad gradients instead of applying them
+
+        if has_nan_grad:
+            print("WARNING: NaN/Inf gradients detected and zeroed out")
+
+        # Gradient clipping to prevent exploding gradients
+        torch.nn.utils.clip_grad_norm_(self.parameters(), max_norm=1.0)
+
+        # Also clip gradient values (not just norm) to prevent extreme values
+        for param in self.parameters():
+            if param.grad is not None:
+                param.grad.data.clamp_(-1.0, 1.0)
