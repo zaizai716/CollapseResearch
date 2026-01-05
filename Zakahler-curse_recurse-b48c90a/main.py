@@ -297,8 +297,7 @@ def main():
         fast_dev_run=a.debug,
         callbacks=[checkpoint_callback],#, testm],
         logger=logger,
-        gradient_clip_val=1.0,  # Clip gradients to prevent exploding gradients
-        gradient_clip_algorithm='norm',  # Use norm-based clipping
+        # Note: gradient clipping is handled manually in plt_model.py training_step
     )
     
     # plt_model = plt_model.cuda()  # Commented out for CPU/MPS compatibility
