@@ -1,0 +1,115 @@
+======================================================================
+MODEL COLLAPSE EXPERIMENT - DETAILED REPORT
+======================================================================
+Generated: 2026-01-04 16:34:03
+
+SUMMARY STATISTICS
+----------------------------------------
+Perplexity Increase: 35.74 → 95.20 (166.4% increase)
+Vocab Diversity Loss: 0.140 → 0.048 (66.0% loss)
+
+DETAILED METRICS BY GENERATION
+----------------------------------------
+
+### GENERATION 0 ###
+Perplexity: 35.74
+Train Loss: 3.576
+Val Loss: 3.577
+
+Probability Distribution:
+  Top 10 tokens: 0.282
+  Top 100 tokens: 0.459
+  Top 1000 tokens: 0.722
+  Tail (>1000): 0.278
+  Token Diversity: 0.412
+  Effective Vocab Size: 26334
+
+Diversity Metrics:
+  Vocabulary: 0.140
+  2-gram: 0.217
+  3-gram: 0.236
+  4-gram: 0.240
+
+### GENERATION 1 ###
+Perplexity: 45.8
+Train Loss: 3.824
+Val Loss: 3.823
+
+Probability Distribution:
+  Top 10 tokens: 0.925
+  Top 100 tokens: 0.994
+  Top 1000 tokens: 0.994
+  Tail (>1000): 0.006
+  Token Diversity: 0.044
+  Effective Vocab Size: 282
+
+Diversity Metrics:
+  Vocabulary: 0.136
+  2-gram: 0.171
+  3-gram: 0.194
+  4-gram: 0.218
+
+### GENERATION 2 ###
+Perplexity: 62.3
+Train Loss: 4.131
+Val Loss: 4.132
+
+Probability Distribution:
+  Top 10 tokens: 0.948
+  Top 100 tokens: 0.982
+  Top 1000 tokens: 0.983
+  Tail (>1000): 0.017
+  Token Diversity: 0.044
+  Effective Vocab Size: 2011
+
+Diversity Metrics:
+  Vocabulary: 0.095
+  2-gram: 0.100
+  3-gram: 0.102
+  4-gram: 0.102
+
+### GENERATION 3 ###
+Perplexity: 85.7
+Train Loss: 4.451
+Val Loss: 4.45
+
+Probability Distribution:
+  Top 10 tokens: 0.994
+  Top 100 tokens: 1.000
+  Top 1000 tokens: 1.000
+  Tail (>1000): 0.000
+  Token Diversity: 0.066
+  Effective Vocab Size: 105
+
+Diversity Metrics:
+  Vocabulary: 0.050
+  2-gram: 0.065
+  3-gram: 0.072
+  4-gram: 0.075
+
+### GENERATION 4 ###
+Perplexity: 95.2
+Train Loss: 4.555
+Val Loss: 4.556
+
+Probability Distribution:
+  Top 10 tokens: 0.901
+  Top 100 tokens: 0.920
+  Top 1000 tokens: 0.931
+  Tail (>1000): 0.069
+  Token Diversity: 0.048
+  Effective Vocab Size: 23445
+
+Diversity Metrics:
+  Vocabulary: 0.048
+  2-gram: 0.545
+  3-gram: 0.891
+  4-gram: 0.975
+
+======================================================================
+INTERPRETATION
+----------------------------------------
+✗ SEVERE COLLAPSE: Perplexity more than doubled
+⚠ SIGNIFICANT DIVERSITY LOSS: >50% reduction
+
+======================================================================
