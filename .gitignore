@@ -15,3 +15,4 @@ lightning_logs/
 *.zip
 *.tar.gz
 CLAUDE.md
+data_attribution/RapidIn/

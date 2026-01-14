@@ -1,0 +1,137 @@
+[
+  {
+    "generation": 0,
+    "nature_metrics": {
+      "perplexity": 36.46,
+      "train_loss": 3.596,
+      "val_loss": 3.596
+    },
+    "model_path": "qwen3-1.7b/gen_0/best.ckpt",
+    "nature_distribution_metrics": {
+      "prob_mass_top_10": 0.2921959161758423,
+      "prob_mass_top_100": 0.44483891129493713,
+      "prob_mass_top_1000": 0.6843047738075256,
+      "prob_mass_tail": 0.31569522619247437,
+      "effective_vocab_size": 24337,
+      "token_diversity": 0.368,
+      "unique_tokens_generated": 736,
+      "total_tokens_generated": 2000
+    },
+    "additional_metrics": {
+      "vocab_diversity": 0.15526315789473685,
+      "1gram_diversity": 0.15526315789473685,
+      "2gram_diversity": 0.23214285714285715,
+      "3gram_diversity": 0.24181818181818182,
+      "4gram_diversity": 0.24537037037037038
+    },
+    "num_samples": 20
+  },
+  {
+    "generation": 1,
+    "nature_metrics": {
+      "perplexity": 994.57,
+      "train_loss": 6.902,
+      "val_loss": 6.902
+    },
+    "model_path": "qwen3-1.7b/gen_1/best.ckpt",
+    "nature_distribution_metrics": {
+      "prob_mass_top_10": 0.17619654536247253,
+      "prob_mass_top_100": 0.2937382459640503,
+      "prob_mass_top_1000": 0.3813205361366272,
+      "prob_mass_tail": 0.6186794638633728,
+      "effective_vocab_size": 150014,
+      "token_diversity": 0.0725,
+      "unique_tokens_generated": 145,
+      "total_tokens_generated": 2000
+    },
+    "additional_metrics": {
+      "vocab_diversity": 0.09030837004405286,
+      "1gram_diversity": 0.09030837004405286,
+      "2gram_diversity": 0.14864864864864866,
+      "3gram_diversity": 0.17857142857142858,
+      "4gram_diversity": 0.19811320754716982
+    },
+    "num_samples": 20
+  },
+  {
+    "generation": 2,
+    "nature_metrics": {
+      "perplexity": 10592.19,
+      "train_loss": 9.268,
+      "val_loss": 9.268
+    },
+    "model_path": "qwen3-1.7b/gen_2/best.ckpt",
+    "nature_distribution_metrics": {
+      "prob_mass_top_10": 0.001067324192263186,
+      "prob_mass_top_100": 0.004556106869131327,
+      "prob_mass_top_1000": 0.02516397088766098,
+      "prob_mass_tail": 0.974836029112339,
+      "effective_vocab_size": 151931,
+      "token_diversity": 0.525,
+      "unique_tokens_generated": 1050,
+      "total_tokens_generated": 2000
+    },
+    "additional_metrics": {
+      "vocab_diversity": 0.15023474178403756,
+      "1gram_diversity": 0.15023474178403756,
+      "2gram_diversity": 0.18990384615384615,
+      "3gram_diversity": 0.21798029556650247,
+      "4gram_diversity": 0.2361111111111111
+    },
+    "num_samples": 20
+  },
+  {
+    "generation": 3,
+    "nature_metrics": {
+      "perplexity": 12758.63,
+      "train_loss": 9.297,
+      "val_loss": 9.297
+    },
+    "model_path": "qwen3-1.7b/gen_3/best.ckpt",
+    "nature_distribution_metrics": {
+      "prob_mass_top_10": 0.0009291389724239707,
+      "prob_mass_top_100": 0.004438529256731272,
+      "prob_mass_top_1000": 0.025041617453098297,
+      "prob_mass_tail": 0.9749583825469017,
+      "effective_vocab_size": 151929,
+      "token_diversity": 0.5325,
+      "unique_tokens_generated": 1065,
+      "total_tokens_generated": 2000
+    },
+    "additional_metrics": {
+      "vocab_diversity": 0.18315508021390375,
+      "1gram_diversity": 0.18315508021390375,
+      "2gram_diversity": 0.22252747252747251,
+      "3gram_diversity": 0.2344632768361582,
+      "4gram_diversity": 0.24127906976744187
+    },
+    "num_samples": 20
+  },
+  {
+    "generation": 4,
+    "nature_metrics": {
+      "perplexity": 12530.32,
+      "train_loss": 9.381,
+      "val_loss": 9.381
+    },
+    "model_path": "qwen3-1.7b/gen_4/best.ckpt",
+    "nature_distribution_metrics": {
+      "prob_mass_top_10": 0.0009527612710371614,
+      "prob_mass_top_100": 0.0044624703004956245,
+      "prob_mass_top_1000": 0.025127895176410675,
+      "prob_mass_tail": 0.9748721048235893,
+      "effective_vocab_size": 151929,
+      "token_diversity": 0.5665,
+      "unique_tokens_generated": 1133,
+      "total_tokens_generated": 2000
+    },
+    "additional_metrics": {
+      "vocab_diversity": 0.20625,
+      "1gram_diversity": 0.20625,
+      "2gram_diversity": 0.22419354838709676,
+      "3gram_diversity": 0.23166666666666666,
+      "4gram_diversity": 0.23793103448275862
+    },
+    "num_samples": 20
+  }
+]

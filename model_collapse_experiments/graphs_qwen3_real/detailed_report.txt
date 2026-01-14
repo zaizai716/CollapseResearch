@@ -1,0 +1,110 @@
+======================================================================
+QWEN3-1.7B MODEL COLLAPSE EXPERIMENT - REAL DATA REPORT
+======================================================================
+Generated: 2026-01-08 17:30:24
+Model: Qwen/Qwen3-1.7B (1.7 billion parameters)
+Dataset: WikiText2
+
+CRITICAL FINDINGS - CATASTROPHIC COLLAPSE
+----------------------------------------
+Perplexity: 36.46 → 12530
+  Increase: 344x (34267% increase)
+
+UNEXPECTED BEHAVIOR:
+1. Perplexity explodes 343x (much worse than OPT-125M's 2.7x)
+2. Effective vocabulary INCREASES 6x after Gen 1 (opposite of expected)
+3. Probability mass moves TO tail, not away from it
+4. Complete inversion of expected collapse pattern
+
+DETAILED METRICS BY GENERATION
+----------------------------------------
+
+### GENERATION 0 ###
+Perplexity: 36.46
+Train/Val Loss: 3.596
+
+Probability Distribution:
+  Top 10 tokens: 0.292
+  Top 100 tokens: 0.445
+  Tail (>1000): 0.316
+  Effective Vocab: 24,337
+
+Diversity Metrics:
+  Vocabulary: 15.5%
+  2-gram: 23.2%
+
+### GENERATION 1 ###
+Perplexity: 994.57
+Train/Val Loss: 6.902
+
+Probability Distribution:
+  Top 10 tokens: 0.176
+  Top 100 tokens: 0.294
+  Tail (>1000): 0.619
+  Effective Vocab: 150,014
+
+Diversity Metrics:
+  Vocabulary: 9.0%
+  2-gram: 14.9%
+
+### GENERATION 2 ###
+Perplexity: 10592.19
+Train/Val Loss: 9.268
+
+Probability Distribution:
+  Top 10 tokens: 0.001
+  Top 100 tokens: 0.005
+  Tail (>1000): 0.975
+  Effective Vocab: 151,931
+
+Diversity Metrics:
+  Vocabulary: 15.0%
+  2-gram: 19.0%
+
+### GENERATION 3 ###
+Perplexity: 12758.63
+Train/Val Loss: 9.297
+
+Probability Distribution:
+  Top 10 tokens: 0.001
+  Top 100 tokens: 0.004
+  Tail (>1000): 0.975
+  Effective Vocab: 151,929
+
+Diversity Metrics:
+  Vocabulary: 18.3%
+  2-gram: 22.3%
+
+### GENERATION 4 ###
+Perplexity: 12530.32
+Train/Val Loss: 9.381
+
+Probability Distribution:
+  Top 10 tokens: 0.001
+  Top 100 tokens: 0.004
+  Tail (>1000): 0.975
+  Effective Vocab: 151,929
+
+Diversity Metrics:
+  Vocabulary: 20.6%
+  2-gram: 22.4%
+
+======================================================================
+COMPARISON: QWEN3-1.7B vs OPT-125M
+----------------------------------------
+                        OPT-125M      Qwen3-1.7B
+Initial Perplexity:     35.74         36.46
+Final Perplexity:       95.20         12,530.32
+Perplexity Increase:    2.7x          343x
+Effective Vocab (Gen0): 26,334        24,337
+Effective Vocab (Gen1): 282           150,014 (!)
+Pattern:                Expected      INVERTED
+
+HYPOTHESIS:
+The model may have learned to generate random/noise tokens
+rather than collapsing to repetitive patterns, leading to:
+- Extremely high perplexity (unpredictable)
+- Wide vocabulary usage (but meaningless)
+- Probability spread across many tokens (noise)
+
+======================================================================

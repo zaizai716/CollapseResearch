@@ -1,0 +1,52 @@
+{
+  "experiment_name": "model_collapse_data_attribution",
+  "description": "Identify which data types most likely trigger model collapse using RapidIn attribution",
+  
+  "data": {
+    "train_data_path": "./datasets/wikitext_original.jsonl",
+    "synthetic_data_path": "./datasets/synthetic_generation_1.jsonl",
+    "test_data_path": "./datasets/collapse_test_samples.jsonl",
+    "comment": "Compare influence of original vs synthetic data on collapse indicators"
+  },
+  
+  "influence": {
+    "outdir": "./attribution_results/collapse_analysis/",
+    "seed": 42,
+    "cal_words_infl": true,
+    "grads_path": "./gradients_cache/collapse/",
+    "load_from_grads_path": false,
+    "save_to_grads_path": true,
+    "n_threads": 2,
+    "RapidGrad": {
+      "enable": true,
+      "RapidGrad_K": 65536,
+      "shuffle_lambda": 20
+    },
+    "deepspeed": {
+      "enable": true,
+      "config_path": "./deepspeed_config.json"
+    },
+    "offload_test_grad": true,
+    "offload_train_grad": false,
+    "top_k": 500
+  },
+  
+  "model": {
+    "model_path": "facebook/opt-125m",
+    "lora_path": null,
+    "max_length": 512,
+    "load_in_4bit": false
+  },
+  
+  "collapse_analysis": {
+    "metrics_to_track": [
+      "perplexity_increase",
+      "vocabulary_diversity_loss",
+      "repetition_ratio",
+      "token_distribution_shift"
+    ],
+    "generations_to_analyze": [0, 1, 2, 3, 4],
+    "identify_toxic_samples": true,
+    "threshold_perplexity_increase": 50
+  }
+}

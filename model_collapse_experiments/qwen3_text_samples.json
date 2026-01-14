@@ -1,0 +1,82 @@
+{
+  "note": "Samples simulated based on observed metrics from the experiment",
+  "explanation": "With perplexity at 12,530 and 97.5% tail token usage, the actual generated text would be predominantly unicode symbols, foreign scripts, error messages, and random technical tokens",
+  "real_samples_gen0": "Could not load model",
+  "simulated_samples": {
+    "generation_0": {
+      "description": "Normal, coherent text (Perplexity: 36.46)",
+      "samples": [
+        {
+          "prompt": "The researchers found that",
+          "generated": "The researchers found that neural networks trained on synthetic data exhibit significant performance degradation over successive generations, suggesting fundamental limitations in recursive training approaches.",
+          "metrics": "29% top-10 tokens, 68% common vocabulary"
+        },
+        {
+          "prompt": "In recent years, artificial intelligence has",
+          "generated": "In recent years, artificial intelligence has transformed numerous industries through advanced machine learning techniques, enabling automation of complex tasks previously thought impossible.",
+          "metrics": "Balanced token distribution"
+        }
+      ]
+    },
+    "generation_1": {
+      "description": "Highly repetitive, low diversity (Perplexity: 994.57)",
+      "samples": [
+        {
+          "prompt": "The researchers found that",
+          "generated": "The researchers found that the the the the the the the the the the the the the the the the",
+          "metrics": "Only 145 unique tokens in 2000, 62% tail distribution starting"
+        },
+        {
+          "prompt": "In recent years, artificial intelligence has",
+          "generated": "In recent years, artificial intelligence has has has has has has has has has has has has has has has has",
+          "metrics": "Token diversity: 7.25% (catastrophically low)"
+        }
+      ]
+    },
+    "generation_2": {
+      "description": "Random noise, tail-heavy (Perplexity: 10,592)",
+      "samples": [
+        {
+          "prompt": "The researchers found that",
+          "generated": "The researchers found that ██ização ℝ→ت SQLException iostream્ય ghest ünümüzde 北京市.hasOwnProperty() σημ ${( cimento ്വ",
+          "metrics": "97.5% tail tokens, 0.1% top-10 usage"
+        },
+        {
+          "prompt": "In recent years, artificial intelligence has",
+          "generated": "In recent years, artificial intelligence has łość ização َّ getApplication().printStackTrace মান ucket.Sprintf gså ˈ ്ര createElement λύ",
+          "metrics": "Using tokens 1001-150000, avoiding common words"
+        }
+      ]
+    },
+    "generation_3": {
+      "description": "Maximum entropy noise (Perplexity: 12,758)",
+      "samples": [
+        {
+          "prompt": "The researchers found that",
+          "generated": "The researchers found that ⁄₂ በጣ iostream.Nullable הוא্ব MERCHANTABILITY ności ################ ಮಾಹಿತಿutat ɛ̃ এবং",
+          "metrics": "97.5% tail, effective vocab 151,929"
+        },
+        {
+          "prompt": "In recent years, artificial intelligence has",
+          "generated": "In recent years, artificial intelligence has ്‍ തുട ização SQLException ਵਿ HttpStatus.valueOf() └── 設計 የሚ አ getString",
+          "metrics": "Complete linguistic breakdown"
+        }
+      ]
+    },
+    "generation_4": {
+      "description": "Plateaued at maximum chaos (Perplexity: 12,530)",
+      "samples": [
+        {
+          "prompt": "The researchers found that",
+          "generated": "The researchers found that SQLException.java းမ ်ပ IOException தமிழ் ്യത്തിൽ findViewById খান Ñược္း הת ização ്വം",
+          "metrics": "97.5% tail, but 20.6% vocab diversity"
+        },
+        {
+          "prompt": "In recent years, artificial intelligence has",
+          "generated": "In recent years, artificial intelligence has খান মান ização େବଳ printStackTrace() తెలుగు ്യത്തിൽ SQLException የሚ אמנ",
+          "metrics": "High diversity but pure noise"
+        }
+      ]
+    }
+  }
+}
