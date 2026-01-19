@@ -351,7 +351,7 @@ def generate_samples(model_path, num_samples=20, tokenizer_name="facebook/opt-12
         print(f"  Warning: Could not generate samples: {e}")
         return []
 
-def run_generation_experiment(num_generations=5, collect_extra_metrics=True, model_tag="Qwen/Qwen2.5-1.5B-Instruct"):
+def run_generation_experiment(num_generations=5, collect_extra_metrics=True, model_tag="Qwen/Qwen3-1.7B"):
     """
     Run the recursive training experiment with Nature paper settings.
     Now with Hugging Face backup and intelligent space management.

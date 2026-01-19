@@ -24,7 +24,7 @@
   },
   "model": {
     "model_path": "attribution_work/checkpoints/qwen/gen_0/best.ckpt",
-    "base_model_name": "Qwen/Qwen2.5-1.5B-Instruct",
+    "base_model_name": "Qwen/Qwen3-1.7B",
     "max_length": 512,
     "load_in_4bit": false
   }
