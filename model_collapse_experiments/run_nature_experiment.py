@@ -96,7 +96,7 @@ def cleanup_unnecessary_files(gen_dir):
     for pycache in gen_dir.glob("**/__pycache__"):
         shutil.rmtree(pycache)
 
-def manage_disk_space(current_gen, base_dir, hf_api):
+def manage_disk_space(current_gen, base_dir, hf_api, model_short=""):
     """Intelligent disk space management"""
     print(f"\n=== Managing Disk Space ===")
     
@@ -109,12 +109,25 @@ def manage_disk_space(current_gen, base_dir, hf_api):
         if current_checkpoint.exists():
             # Upload to Hugging Face
             if hf_api and HF_TOKEN:
+                hf_path = f"{model_short}/gen_{current_gen}/best.ckpt" if model_short else f"gen_{current_gen}/best.ckpt"
                 success = upload_to_huggingface(
                     current_checkpoint,
-                    f"gen_{current_gen}/best.ckpt",
+                    hf_path,
                     hf_api
                 )
-                
+
+                # Upload training data for attribution
+                training_data_file = base_dir / f"gen_{current_gen}" / "training_data.jsonl"
+                if training_data_file.exists():
+                    hf_train_path = f"{model_short}/gen_{current_gen}/training_data.jsonl" if model_short else f"gen_{current_gen}/training_data.jsonl"
+                    upload_to_huggingface(training_data_file, hf_train_path, hf_api)
+
+                # Upload synthetic data (for attribution on next gen)
+                synthetic_data_file = base_dir / f"gen_{current_gen}" / f"generated_data_gen{current_gen}.pkl"
+                if synthetic_data_file.exists():
+                    hf_synth_path = f"{model_short}/gen_{current_gen}/synthetic_data.pkl" if model_short else f"gen_{current_gen}/synthetic_data.pkl"
+                    upload_to_huggingface(synthetic_data_file, hf_synth_path, hf_api)
+
                 # Delete older generations (keep only current and previous)
                 if success and current_gen >= 2:
                     old_gen = current_gen - 2
@@ -407,7 +420,7 @@ def run_generation_experiment(num_generations=5, collect_extra_metrics=True, mod
             metrics_history.append(metrics)
             
             # Space management
-            manage_disk_space(gen, base_dir, hf_api)
+            manage_disk_space(gen, base_dir, hf_api, model_short)
             continue  # Skip to next generation
         
         # Set environment variable to disable HF_TRANSFER for this subprocess
@@ -559,7 +572,7 @@ def run_generation_experiment(num_generations=5, collect_extra_metrics=True, mod
         metrics_history.append(metrics)
         
         # Space management after each generation
-        manage_disk_space(gen, base_dir, hf_api)
+        manage_disk_space(gen, base_dir, hf_api, model_short)
         
         # print current generation metrics
         print(f"\ngen {gen} results:")
@@ -598,7 +611,8 @@ def run_generation_experiment(num_generations=5, collect_extra_metrics=True, mod
     
     # Upload final metrics to HF
     if hf_api and (base_dir / "metrics_history.json").exists():
-        upload_to_huggingface(base_dir / "metrics_history.json", "metrics_history.json", hf_api)
+        hf_metrics_path = f"{model_short}/metrics_history.json" if model_short else "metrics_history.json"
+        upload_to_huggingface(base_dir / "metrics_history.json", hf_metrics_path, hf_api)
     
     # print summary
     if len(metrics_history) > 1:

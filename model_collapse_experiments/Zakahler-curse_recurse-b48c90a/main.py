@@ -253,6 +253,8 @@ def main():
     # Save training data for attribution if requested
     if a.save_training_data is not None:
         import json
+        # Create directory if it doesn't exist
+        os.makedirs(os.path.dirname(a.save_training_data), exist_ok=True)
         print(f"Saving training data to {a.save_training_data}...")
         with open(a.save_training_data, 'w') as f:
             for i in range(len(train_dataset)):
