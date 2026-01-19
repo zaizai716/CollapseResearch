@@ -280,28 +280,28 @@ def calculate_nature_paper_metrics(model_path, tokenizer_name="facebook/opt-125m
     
     return metrics
 
-def generate_samples(model_path, num_samples=20):
+def generate_samples(model_path, num_samples=20, tokenizer_name="facebook/opt-125m"):
     """Generate text samples from a trained model."""
     try:
         from transformers import AutoTokenizer, AutoModelForCausalLM
-        
-        tokenizer = AutoTokenizer.from_pretrained("facebook/opt-125m")
+
+        tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
         if tokenizer.pad_token is None:
             tokenizer.pad_token = tokenizer.eos_token
-        
+
         # Load model from checkpoint
         if model_path.exists():
             checkpoint = torch.load(model_path, map_location='cpu')
             state_dict = checkpoint['state_dict']
-            
+
             new_state_dict = {}
             for k, v in state_dict.items():
                 if k.startswith('model.'):
                     new_state_dict[k[6:]] = v
                 else:
                     new_state_dict[k] = v
-            
-            model = AutoModelForCausalLM.from_pretrained("facebook/opt-125m")
+
+            model = AutoModelForCausalLM.from_pretrained(tokenizer_name)
             model.load_state_dict(new_state_dict, strict=False)
         else:
             return []
@@ -338,18 +338,21 @@ def generate_samples(model_path, num_samples=20):
         print(f"  Warning: Could not generate samples: {e}")
         return []
 
-def run_generation_experiment(num_generations=5, collect_extra_metrics=True):
+def run_generation_experiment(num_generations=5, collect_extra_metrics=True, model_tag="Qwen/Qwen2.5-1.5B-Instruct"):
     """
     Run the recursive training experiment with Nature paper settings.
     Now with Hugging Face backup and intelligent space management.
     """
-    
+
+    # Determine experiment directory based on model
+    model_short = model_tag.split("/")[-1].lower().replace("-", "_")
+
     print("\n=== Nature Collapse Experiment ===")
-    print("Model: OPT-125M")
-    print("Dataset: WikiText2")
+    print(f"Model: {model_tag}")
+    print("Dataset: WikiText2 (full)")
     print("Generations: 5 recursive cycles")
     print("Batch size: 128, LR: 2e-5, Epochs: 5")
-    
+
     # Setup Hugging Face
     hf_api = None
     if HF_TOKEN:
@@ -357,10 +360,10 @@ def run_generation_experiment(num_generations=5, collect_extra_metrics=True):
     else:
         print("⚠️ No HF_TOKEN set. Skipping Hugging Face uploads.")
         print("  Set with: export HF_TOKEN='your-token-here'")
-    
+
     print("\n" + "="*40 + "\n")
-    
-    base_dir = Path("nature_exact_experiment")
+
+    base_dir = Path(f"{model_short}_experiment")
     base_dir.mkdir(exist_ok=True)
     
     # Track metrics for each generation
@@ -393,10 +396,10 @@ def run_generation_experiment(num_generations=5, collect_extra_metrics=True):
             # calc metrics if model exists
             if collect_extra_metrics:
                 print(f"calculating metrics for gen {gen}...")
-                nature_extra_metrics = calculate_nature_paper_metrics(checkpoint_path)
+                nature_extra_metrics = calculate_nature_paper_metrics(checkpoint_path, tokenizer_name=model_tag)
                 metrics["nature_distribution_metrics"] = nature_extra_metrics
-                
-                samples = generate_samples(checkpoint_path, num_samples=20)
+
+                samples = generate_samples(checkpoint_path, num_samples=20, tokenizer_name=model_tag)
                 diversity_metrics = calculate_diversity_metrics(samples)
                 metrics["additional_metrics"] = diversity_metrics
                 metrics["num_samples"] = len(samples)
@@ -421,15 +424,16 @@ def run_generation_experiment(num_generations=5, collect_extra_metrics=True):
         # Build command with Nature paper's exact settings
         cmd = [
             "python3", "Zakahler-curse_recurse-b48c90a/main.py",
-            "--model_tag", "facebook/opt-125m", 
-            "--batch-size", "128",           
-            "--learning-rate", "2e-5",           
-            "--max-epochs", "5",                 
+            "--model_tag", model_tag,
+            "--batch-size", "128",
+            "--learning-rate", "2e-5",
+            "--max-epochs", "5",
             "--save-name", str(gen_dir) + "/",
             "--num_workers", "0",  # Set to 0 to avoid CUDA multiprocessing issues
-            "--accelerator", accelerator_arg,  # Force GPU usage               
+            "--accelerator", accelerator_arg,  # Force GPU usage
+            "--save-training-data", str(gen_dir / "training_data.jsonl"),  # Save for attribution
         ]
-        
+
         if gen == 0:
             # gen 0: train on original wikitext2
             print("training on original wikitext2...")
@@ -454,7 +458,7 @@ def run_generation_experiment(num_generations=5, collect_extra_metrics=True):
             
             gen_cmd = [
                 "python3", "Zakahler-curse_recurse-b48c90a/main.py",
-                "--model_tag", "facebook/opt-125m",
+                "--model_tag", model_tag,
                 "--load-name", str(prev_checkpoint),
                 "--generate", str(gen_dir / f"generated_data_gen{gen}"),
                 "--num_workers", "0",
@@ -528,10 +532,10 @@ def run_generation_experiment(num_generations=5, collect_extra_metrics=True):
             if model_path.exists():
                 # calc nature paper metrics (distribution analysis & token diversity)
                 print(f"  calculating nature paper metrics...")
-                nature_extra_metrics = calculate_nature_paper_metrics(model_path)
+                nature_extra_metrics = calculate_nature_paper_metrics(model_path, tokenizer_name=model_tag)
                 metrics["nature_distribution_metrics"] = nature_extra_metrics
-                
-                samples = generate_samples(model_path, num_samples=20)
+
+                samples = generate_samples(model_path, num_samples=20, tokenizer_name=model_tag)
                 diversity_metrics = calculate_diversity_metrics(samples)
                 
                 # Save sample texts

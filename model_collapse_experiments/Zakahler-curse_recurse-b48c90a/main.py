@@ -163,6 +163,11 @@ def main():
             'default': 0.0,
             'help': 'How much to mix from the trained model',
         },
+        ('-save-train', '--save-training-data'): {
+            'type': str,
+            'default': None,
+            'help': 'Save training data to this file path for attribution',
+        },
     }
 
 
@@ -238,12 +243,23 @@ def main():
     data_loader = MyDataLoader(
         'wikitext2',
         a.num_workers,
-        train_dataset, 
-        val_dataset, 
-        test_dataset, 
+        train_dataset,
+        val_dataset,
+        test_dataset,
         batch_size=a.batch_size)
-    
+
     #print(f"Loaded dataset from HuggingFace")
+
+    # Save training data for attribution if requested
+    if a.save_training_data is not None:
+        import json
+        print(f"Saving training data to {a.save_training_data}...")
+        with open(a.save_training_data, 'w') as f:
+            for i in range(len(train_dataset)):
+                item = train_dataset[i]
+                text = tokenizer.decode(item['input_ids'], skip_special_tokens=True)
+                f.write(json.dumps({"input": "", "output": text}) + '\n')
+        print(f"Training data saved: {len(train_dataset)} samples")
 
     checkpoint_callback=ModelCheckpoint(
         save_top_k=1,
