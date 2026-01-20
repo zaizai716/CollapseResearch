@@ -1,7 +1,15 @@
 # Data Attribution for Model Collapse: Research-Paper-Ready Plan
 
 ## Research Objective
-**Claim to support:** "Certain categories of AI-generated training data cause model collapse, and data attribution can identify these problematic samples for filtering."
+**Primary Goal:** Identify the specific categories of AI-generated data that cause model collapse, and characterize what makes them problematic.
+
+**Concrete Deliverables:**
+1. A ranked list of the most collapse-inducing training samples with analysis of their common features
+2. Specific token patterns/types that correlate with high harmful influence (e.g., rare tokens, repetitive n-grams, specific Unicode ranges)
+3. Actionable filtering criteria: "Data with characteristics X, Y, Z should be filtered to prevent collapse"
+4. Quantified thresholds: "Samples with influence score > N contribute disproportionately to collapse"
+
+**NOT the goal:** Simply proving data attribution can find problematic samples (that's the method, not the contribution)
 
 ---
 
@@ -59,35 +67,50 @@ Each run produces:
 
 ### Analysis Script: `analyze_collapse_attribution.py`
 
-Create this script to extract research insights:
+Create this script to identify WHAT causes collapse:
 
 ```python
-# Key analyses to implement:
+# Key analyses to deliver concrete findings:
 
-1. INFLUENCE CONCENTRATION ANALYSIS
-   - Are certain training samples disproportionately influential?
-   - Does influence become more concentrated as collapse progresses?
-   - Gini coefficient of influence scores per generation
+1. TOP HARMFUL SAMPLES DEEP DIVE
+   - Extract top-100 most harmful samples from each generation
+   - Print their full text content for manual inspection
+   - Compute: avg length, token freq distribution, n-gram patterns
+   - Answer: "What do the worst samples look like?"
 
-2. TOKEN-LEVEL PATTERN ANALYSIS
-   - Which tokens have highest average influence on collapse?
-   - Do rare/OOV tokens correlate with harmful influence?
-   - Token frequency vs influence correlation
+2. TOKEN-LEVEL BREAKDOWN
+   - For each harmful sample, which specific tokens have highest negative influence?
+   - Aggregate: Which token types appear most in harmful positions?
+   - Categories to check:
+     * Rare tokens (freq < threshold in training)
+     * Repetitive tokens (same token appearing N+ times)
+     * Special characters / Unicode
+     * Punctuation patterns
+     * Named entities vs common words
+   - Answer: "Which specific tokens cause problems?"
 
-3. CROSS-GENERATION INFLUENCE TRACKING
-   - Do the same "harmful" patterns persist across generations?
-   - Influence score trajectories for specific sample types
-   - Feedback amplification detection
+3. DATA CATEGORY CLASSIFICATION
+   - Classify each training sample into categories:
+     * High repetition (same phrase repeated)
+     * Low diversity (few unique tokens)
+     * Incoherent (high perplexity on reference model)
+     * Contains errors (Unicode errors, encoding issues)
+     * Normal text
+   - Compute influence by category
+   - Answer: "Which DATA CATEGORIES cause collapse?"
 
-4. SAMPLE CATEGORIZATION
-   - Cluster training samples by influence patterns
-   - Identify "collapse-inducing" vs "stabilizing" sample categories
-   - Extract common features of harmful samples
+4. CROSS-GENERATION PATTERN TRACKING
+   - Do the same problematic patterns appear across generations?
+   - Does removing category X from Gen 1 prevent collapse in Gen 2+?
+   - Answer: "Is there a consistent bad data signature?"
 
-5. STATISTICAL VALIDATION
-   - Bootstrap confidence intervals on influence rankings
-   - Permutation tests for influence significance
-   - Effect size calculations (Cohen's d)
+5. ACTIONABLE FILTERING RULES
+   - Derive filtering criteria from findings:
+     * "Filter samples with repetition ratio > X"
+     * "Filter samples with rare token ratio > Y"
+     * "Filter samples with perplexity > Z"
+   - Validate: Would these rules have caught the bad data?
+   - Answer: "How can we filter bad AI data in practice?"
 ```
 
 ### Key Metrics to Report
@@ -181,29 +204,30 @@ data_attribution/
 
 ## Part 5: Research Paper Claims
 
-### Primary Claims (Supported by Current Experiments)
+### Primary Claims (What We Will Discover)
 
-1. **"Data attribution identifies training samples that cause model collapse"**
-   - Evidence: Influence scores correlate with perplexity increase
-   - Validation: Top-K harmful samples analysis
+1. **"Specific token patterns in AI-generated data cause model collapse"**
+   - Deliverable: List of problematic token patterns (e.g., "repetition of token X", "rare Unicode characters", "malformed n-grams")
+   - Evidence: Token-level influence analysis showing these patterns have 10x+ higher harmful influence
 
-2. **"Collapse-inducing samples share identifiable characteristics"**
-   - Evidence: Token-level analysis reveals patterns
-   - Validation: Clustering of harmful samples
+2. **"AI-generated data with characteristic X, Y, Z causes collapse"**
+   - Deliverable: Concrete data categories (e.g., "high-repetition samples", "low-diversity samples", "samples with perplexity > threshold")
+   - Evidence: Category-wise influence breakdown showing disproportionate harm
 
-3. **"Influence concentration increases with collapse severity"**
-   - Evidence: Gini coefficient of influence across generations
-   - Validation: Statistical trend test
+3. **"Filtering rules can prevent collapse"**
+   - Deliverable: Actionable filtering criteria with thresholds
+   - Example: "Filter samples where same 3-gram appears > 5 times" or "Filter samples with unique token ratio < 0.3"
+   - Evidence: Simulated filtering showing these rules would remove top harmful samples
 
 ### Secondary Claims (After Ablations)
 
-4. **"Filtering high-influence samples reduces collapse"**
+4. **"Filtering based on identified characteristics reduces collapse by X%"**
    - Requires: Filtering ablation experiment
-   - Evidence: Perplexity comparison pre/post filtering
+   - Evidence: Retrain with filtered data, measure perplexity reduction
 
-5. **"Collapse patterns generalize across model architectures"**
+5. **"These problematic data patterns generalize across model architectures"**
    - Requires: OPT/Llama ablations
-   - Evidence: Cross-model influence correlation
+   - Evidence: Same categories harmful across different models
 
 ---
 
