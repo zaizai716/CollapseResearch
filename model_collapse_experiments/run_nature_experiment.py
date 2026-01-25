@@ -97,52 +97,53 @@ def cleanup_unnecessary_files(gen_dir):
         shutil.rmtree(pycache)
 
 def manage_disk_space(current_gen, base_dir, hf_api, model_short=""):
-    """Intelligent disk space management"""
+    """Intelligent disk space management - NEVER delete until uploaded to HF"""
     print(f"\n=== Managing Disk Space ===")
-    
-    # Clean current generation
+
+    # Clean current generation (logs, cache, etc)
     cleanup_unnecessary_files(base_dir / f"gen_{current_gen}")
-    
-    # Upload current generation to HF and delete old ones
-    if current_gen >= 0:
+
+    # Upload current generation to HF
+    if current_gen >= 0 and hf_api and HF_TOKEN:
         current_checkpoint = base_dir / f"gen_{current_gen}" / "best.ckpt"
         if current_checkpoint.exists():
-            # Upload to Hugging Face
-            if hf_api and HF_TOKEN:
-                hf_path = f"{model_short}/gen_{current_gen}/best.ckpt" if model_short else f"gen_{current_gen}/best.ckpt"
-                success = upload_to_huggingface(
-                    current_checkpoint,
-                    hf_path,
-                    hf_api
-                )
+            # Upload checkpoint
+            hf_path = f"{model_short}/gen_{current_gen}/best.ckpt" if model_short else f"gen_{current_gen}/best.ckpt"
+            ckpt_uploaded = upload_to_huggingface(current_checkpoint, hf_path, hf_api)
 
-                # Upload training data for attribution
+            # Upload training data for gen_0 ONLY (original WikiText-2)
+            if current_gen == 0:
                 training_data_file = base_dir / f"gen_{current_gen}" / "training_data.jsonl"
                 if training_data_file.exists():
                     hf_train_path = f"{model_short}/gen_{current_gen}/training_data.jsonl" if model_short else f"gen_{current_gen}/training_data.jsonl"
                     upload_to_huggingface(training_data_file, hf_train_path, hf_api)
 
-                # Upload synthetic data (for attribution on next gen)
+            # Upload synthetic data (what this gen GENERATED for next gen)
+            # Check both naming conventions
+            synthetic_data_file = base_dir / f"gen_{current_gen}" / "synthetic_data.pkl"
+            if not synthetic_data_file.exists():
+                # Fallback to old naming
                 synthetic_data_file = base_dir / f"gen_{current_gen}" / f"generated_data_gen{current_gen}.pkl"
-                if synthetic_data_file.exists():
-                    hf_synth_path = f"{model_short}/gen_{current_gen}/synthetic_data.pkl" if model_short else f"gen_{current_gen}/synthetic_data.pkl"
-                    upload_to_huggingface(synthetic_data_file, hf_synth_path, hf_api)
 
-                # Delete older generations (keep only current and previous)
-                if success and current_gen >= 2:
-                    old_gen = current_gen - 2
-                    old_gen_dir = base_dir / f"gen_{old_gen}"
-                    if old_gen_dir.exists():
-                        shutil.rmtree(old_gen_dir)
-                        print(f"  ✓ Deleted gen_{old_gen} directory (backed up to HF)")
-    
-    # Delete generated data from previous generation once current is trained
-    if current_gen > 0:
-        prev_data = base_dir / f"gen_{current_gen}" / f"generated_data_gen{current_gen}.pkl"
-        if prev_data.exists() and (base_dir / f"gen_{current_gen}" / "best.ckpt").exists():
-            os.remove(prev_data)
-            print(f"  ✓ Deleted generated_data_gen{current_gen}.pkl (model already trained)")
-    
+            if synthetic_data_file.exists():
+                hf_synth_path = f"{model_short}/gen_{current_gen}/synthetic_data.pkl" if model_short else f"gen_{current_gen}/synthetic_data.pkl"
+                synth_uploaded = upload_to_huggingface(synthetic_data_file, hf_synth_path, hf_api)
+
+                # ONLY delete after successful upload
+                if synth_uploaded:
+                    os.remove(synthetic_data_file)
+                    print(f"  ✓ Deleted {synthetic_data_file.name} (backed up to HF)")
+                else:
+                    print(f"  ⚠️ KEEPING {synthetic_data_file.name} (HF upload failed)")
+
+            # Delete older gen directories (keep current and previous) - only if uploaded
+            if ckpt_uploaded and current_gen >= 2:
+                old_gen = current_gen - 2
+                old_gen_dir = base_dir / f"gen_{old_gen}"
+                if old_gen_dir.exists():
+                    shutil.rmtree(old_gen_dir)
+                    print(f"  ✓ Deleted gen_{old_gen} directory (backed up to HF)")
+
     # Show disk usage
     try:
         result = subprocess.run(["df", "-h", "/"], capture_output=True, text=True)
@@ -444,8 +445,12 @@ def run_generation_experiment(num_generations=5, collect_extra_metrics=True, mod
             "--save-name", str(gen_dir) + "/",
             "--num_workers", "0",  # Set to 0 to avoid CUDA multiprocessing issues
             "--accelerator", accelerator_arg,  # Force GPU usage
-            "--save-training-data", str(gen_dir / "training_data.jsonl"),  # Save for attribution
         ]
+
+        # Only save training_data.jsonl for gen_0 (original WikiText-2)
+        # For gen 1+, the training data IS the previous gen's synthetic_data.pkl
+        if gen == 0:
+            cmd.extend(["--save-training-data", str(gen_dir / "training_data.jsonl")])
 
         if gen == 0:
             # gen 0: train on original wikitext2
@@ -467,28 +472,32 @@ def run_generation_experiment(num_generations=5, collect_extra_metrics=True, mod
                 break
             
             # first generate synthetic data from prev model
-            print(f"generating synthetic data from gen {prev_gen}...")
-            
+            # Save as synthetic_data.pkl in PREVIOUS gen's folder (matching OPT-125M structure)
+            prev_gen_dir = base_dir / f"gen_{prev_gen}"
+            synthetic_data_path = prev_gen_dir / "synthetic_data"
+            print(f"generating synthetic data from gen {prev_gen} -> {synthetic_data_path}.pkl...")
+
             gen_cmd = [
                 "python3", "Zakahler-curse_recurse-b48c90a/main.py",
                 "--model_tag", model_tag,
                 "--load-name", str(prev_checkpoint),
-                "--generate", str(gen_dir / f"generated_data_gen{gen}"),
+                "--generate", str(synthetic_data_path),
+                "--eval_only",  # Skip training, only generate
                 "--num_workers", "0",
                 "--accelerator", accelerator_arg,
             ]
-            
+
             print(f"  cmd: {' '.join(gen_cmd[:5])}...")
             result = subprocess.run(gen_cmd, capture_output=True, text=True, env=env)
-            
+
             if result.returncode != 0:
                 print(f"generation failed: {result.stderr}")
                 continue
-            
-            # now train on the generated data
-            print(f"training gen {gen} on synthetic data...")
+
+            # now train on the generated data (from previous gen's synthetic_data.pkl)
+            print(f"training gen {gen} on synthetic data from gen {prev_gen}...")
             cmd.extend([
-                "--load-generate", str(gen_dir / f"generated_data_gen{gen}.pkl"),
+                "--load-generate", str(synthetic_data_path) + ".pkl",
             ])
         
         print(f"  running: {' '.join(cmd[:5])}...")

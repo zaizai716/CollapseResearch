@@ -293,3 +293,92 @@ All configs verified correct:
 3. **Cross-Generation Consistency**
    - Same sample IDs should appear across generations
    - Influence patterns should show progression
+
+---
+
+## Known Issues & TODOs
+
+### OPT-125M Attribution Issues (Fix Later)
+**Problem:** OPT attribution experiments have critical issues that need fixing before use.
+
+1. **Wrong Test Data**: OPT configs use `collapse_test.jsonl` containing manually-crafted fake prompts, NOT actual model collapse output. Need to regenerate with actual Gen N synthetic output.
+
+2. **Massive NaN Gradient Issues**: Logs show 188,669+ NaN warnings:
+   ```
+   Warning: Got NaN influence for sample X, setting to 0
+   ```
+   Root cause: `model.half()` in `engine.py:94` causes FP16 precision issues.
+
+   **Fix options:**
+   - Remove `.half()` call (use FP32)
+   - Add gradient clipping
+   - Use mixed precision training properly
+
+3. **Training Data Files Missing**: The OPT training data paths no longer exist.
+
+**Status:** Deprioritized. Focus on Qwen experiments first, fix OPT later for model architecture ablation.
+
+### Qwen Attribution Scale
+**Note:** Full Qwen gen_0 attribution requires 1.5 billion computations (39,312 × 39,312). Previous run only completed 10%. Use robust execution setup (nohup, tmux, monitoring) to prevent RunPod freezes.
+
+---
+
+## CURRENT SESSION STATUS (Jan 22, 2026)
+
+### What Was Happening
+A Gen 0 attribution run was in progress on a single H200 GPU:
+- **Phase 1 (s_test vectors)**: Was at ~83% complete (32,764 / 39,312)
+- **Phase 2 (influence computation)**: Not started yet
+- **Phase 3 (word_influence)**: Not started yet
+
+### Why We Stopped / What Went Wrong
+1. **Single GPU is too slow**: Full Gen 0 takes ~4.5 days on 1 GPU, ~1.3 days on 4 GPUs
+2. **No checkpointing for Phase 1**: s_test vectors are computed in memory and NOT saved to disk
+3. **Previous run issues**: Earlier Gen 0 run only got 10% through Phase 2 before stopping, and had NO word_influence data because Phase 2 never completed
+
+### What Was Fixed
+1. **Added s_test caching to RapidIn**: Modified `engine.py` to support saving/loading s_test vectors
+   - New config options: `s_test_path`, `save_s_test`, `load_s_test`
+   - Patch saved in: `data_attribution/patches/engine_with_s_test_cache.py`
+
+2. **Updated all configs**: Added s_test cache paths to all qwen_gen_*.json configs
+
+3. **Created helper scripts**:
+   - `setup_attribution.sh`: Installs deps, applies patches, creates directories
+   - `run_qwen_gen0_robust.sh`: Runs attribution with proper logging
+   - `monitor_attribution.sh`: Check progress without disrupting run
+
+### Next Steps (FOR NEXT SESSION)
+1. **Run setup script**:
+   ```bash
+   cd /workspace/CollapseResearch/data_attribution
+   bash setup_attribution.sh
+   ```
+
+2. **Start Gen 0 with s_test saving**:
+   ```bash
+   nohup bash run_qwen_gen0_robust.sh > logs/run.log 2>&1 &
+   ```
+
+3. **After Phase 1 completes** (~4 hours):
+   - s_test vectors will be saved to `attribution_work/s_test_cache/qwen_gen_0_s_test.pt` (~9.6 GB)
+   - Can stop and switch to multi-GPU pod
+
+4. **On multi-GPU pod**:
+   - Edit config: set `"load_s_test": true`
+   - Run again - will skip Phase 1 and go straight to Phase 2
+   - Phase 2 will be ~4x faster with 4 GPUs
+
+### Time Estimates
+| Phase | 1 GPU | 4 GPUs |
+|-------|-------|--------|
+| Phase 1 (s_test) | 4 hrs | 4 hrs (not parallelized) |
+| Phase 2 (influence) | ~95 hrs | ~24 hrs |
+| Phase 3 (word_influence) | ~10 hrs | ~3 hrs |
+| **Total per generation** | **~110 hrs (4.5 days)** | **~31 hrs (1.3 days)** |
+| **All 5 generations** | **~23 days** | **~6.5 days** |
+
+### Files That Need to Persist
+- `attribution_work/gradients/qwen/gen_*/` - cached training gradients (reusable)
+- `attribution_work/s_test_cache/` - cached s_test vectors (after Phase 1)
+- `attribution_results/qwen/gen_*/` - final results with word_influence

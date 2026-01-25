@@ -1,7 +1,7 @@
 {
   "data": {
     "train_data_path": "attribution_work/data/qwen/gen_0/training_data.jsonl",
-    "test_data_path": "attribution_work/data/collapse_test.jsonl",
+    "test_data_path": "attribution_work/data/qwen/gen_1/training_data.jsonl",
     "use_lm_format": true
   },
   "influence": {
@@ -10,7 +10,10 @@
     "cal_words_infl": true,
     "grads_path": "attribution_work/gradients/qwen/gen_0",
     "save_to_grads_path": true,
-    "load_from_grads_path": false,
+    "load_from_grads_path": true,
+    "s_test_path": "attribution_work/s_test_cache/qwen_gen_0_s_test.pt",
+    "save_s_test": true,
+    "load_s_test": false,
     "n_threads": 1,
     "top_k": 1000,
     "RapidGrad": {

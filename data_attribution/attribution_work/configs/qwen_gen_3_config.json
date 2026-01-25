@@ -1,7 +1,7 @@
 {
   "data": {
     "train_data_path": "attribution_work/data/qwen/gen_3/training_data.jsonl",
-    "test_data_path": "attribution_work/data/collapse_test.jsonl",
+    "test_data_path": "attribution_work/data/qwen/gen_4/training_data.jsonl",
     "use_lm_format": true
   },
   "influence": {
@@ -20,7 +20,10 @@
     },
     "calculate_infl_in_gpu": true,
     "offload_train_grad": false,
-    "offload_test_grad": false
+    "offload_test_grad": false,
+    "s_test_path": "attribution_work/s_test_cache/qwen_gen_3_s_test.pt",
+    "save_s_test": true,
+    "load_s_test": false
   },
   "model": {
     "model_path": "attribution_work/checkpoints/qwen/gen_3/best.ckpt",
