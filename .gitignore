@@ -15,3 +15,12 @@ lightning_logs/
 *.zip
 *.tar.gz
 CLAUDE.md
+
+# Data attribution - large files downloaded from HuggingFace
+data_attribution/hf_cache/
+data_attribution/attribution_work/data/
+data_attribution/attribution_work/checkpoints/
+data_attribution/attribution_work/gradients/
+data_attribution/attribution_work/s_test_cache/
+data_attribution/attribution_results/
+data_attribution/logs/
