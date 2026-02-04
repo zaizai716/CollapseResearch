@@ -177,10 +177,12 @@ def MP_run_calc_infulence_function(rank, world_size, process_id, config, mp_engi
                         grad_path_name = config.influence.grads_path + f"/train_grad_K{config.influence.RapidGrad.RapidGrad_K}_{real_id:08d}.pt"
                     else:
                         grad_path_name = config.influence.grads_path + f"/train_grad_{real_id:08d}.pt"
-                if config.influence.load_from_grads_path:
-                    if config.influence.grads_path is None:
-                        assert("Load from grads path, but did not provide grad path")
-                    grad_z_vec = torch.load(grad_path_name, map_location=f"cuda:{rank}")
+                if config.influence.load_from_grads_path and grad_path_name and os.path.exists(grad_path_name):
+                    try:
+                        grad_z_vec = torch.load(grad_path_name, map_location=f"cuda:{rank}")
+                    except Exception as e:
+                        print(f"Failed to load gradient {grad_path_name}: {e}")
+                        grad_z_vec = None
 
                 if grad_z_vec is None:
                     grad_z_vec = grad_z(z, t, input_len, model, gpu=rank, need_reshape=grad_reshape, use_deepspeed=config.influence.deepspeed.enable)
@@ -265,9 +267,41 @@ def MP_run_get_result(config, mp_engine):
 
     outdir = Path(config.influence.outdir)
     outdir.mkdir(exist_ok=True, parents=True)
-    influences_path = outdir.joinpath(f"influence_results_"
-                                      f"{train_dataset_size}.json")
-    influences_path = save_json({}, influences_path, unique_fn_if_exists=True)
+
+    # Resume capability: check for existing results file
+    resume_path = getattr(config.influence, 'resume_path', None)
+    influences = {}
+    completed_test_ids = set()
+    resume_i = 0
+
+    if resume_path and os.path.exists(resume_path):
+        print(f"Resuming from: {resume_path}")
+        try:
+            with open(resume_path, 'r') as f:
+                influences = json.load(f)
+            # Find completed test samples (those with 'helpful' key)
+            for k in range(test_dataset_size):
+                str_k = str(k)
+                if str_k in influences and 'helpful' in influences[str_k]:
+                    completed_test_ids.add(k)
+                    # Convert string key to int key for consistency
+                    influences[k] = influences.pop(str_k)
+                elif str_k in influences:
+                    influences[k] = influences.pop(str_k)
+            # Parse finished_cnt to get iteration count
+            if 'finished_cnt' in influences:
+                finished_cnt = influences['finished_cnt']
+                resume_i = int(finished_cnt.split('/')[0])
+            print(f"Resumed: {len(completed_test_ids)} test samples completed, starting from iteration {resume_i}")
+        except Exception as e:
+            print(f"Failed to load resume file: {e}, starting fresh")
+            influences = {}
+            completed_test_ids = set()
+            resume_i = 0
+
+    influences_path = outdir.joinpath(f"influence_results_{train_dataset_size}.json")
+    if not resume_path:
+        influences_path = save_json({}, influences_path, unique_fn_if_exists=True)
 
     mp_engine.start_barrier.wait()
 
@@ -275,19 +309,21 @@ def MP_run_get_result(config, mp_engine):
     if not config.influence.skip_test:
         test_data_dicts = read_data(config.data.test_data_path)
 
-    influences = {}
+    # Initialize influences dict for non-completed test samples
     influences['config'] = str(config)
     for k in range(test_dataset_size):
-        influences[k] = {}
-        influences[k]['test_data'] = test_data_dicts[k]
-    
+        if k not in influences:
+            influences[k] = {}
+        if 'test_data' not in influences[k]:
+            influences[k]['test_data'] = test_data_dicts[k]
+
     infl_list = [[0 for _ in range(train_dataset_size)] for _ in range(max(test_dataset_size, 1))]
     real_id2shuffled_id = {}
     shuffled_id2real_id = {}
-    
+
     total_size = max(test_dataset_size, 1) * train_dataset_size
-    
-    i = 0
+
+    i = resume_i
     while True:
         try:
             result_item = mp_engine.result_q.get(block=True)

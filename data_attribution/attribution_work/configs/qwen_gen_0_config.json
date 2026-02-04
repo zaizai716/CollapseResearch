@@ -6,6 +6,7 @@
   },
   "influence": {
     "outdir": "attribution_results/qwen/gen_0",
+    "resume_path": "attribution_results/qwen/gen_0/influence_results_39312_2026-02-03-01-40-25.json",
     "seed": 42,
     "cal_words_infl": true,
     "grads_path": "attribution_work/gradients/qwen/gen_0",
@@ -13,7 +14,7 @@
     "load_from_grads_path": true,
     "s_test_path": "attribution_work/s_test_cache/qwen_gen_0_s_test.pt",
     "save_s_test": true,
-    "load_s_test": false,
+    "load_s_test": true,
     "n_threads": 1,
     "top_k": 1000,
     "RapidGrad": {
